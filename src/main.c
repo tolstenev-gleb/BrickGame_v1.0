@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define WIN_INIT()        \
@@ -12,7 +13,11 @@
     noecho();             \
     curs_set(0);          \
   }
+
 #define KEY_ESCAPE 27
+#define ENTER_KEY 10
+#define KEY_SPACE 32
+#define KEY_Q 81
 
 #define ROWS 20
 #define COLS 10
@@ -41,6 +46,11 @@ typedef struct {
 } GameInfo_t;
 
 typedef struct {
+  int x;
+  int y;
+} Point_t;
+
+typedef struct {
   struct {
     int *row[ROWS];
     int cell[ROWS][COLS];
@@ -49,9 +59,42 @@ typedef struct {
     int *row[FIG_ROWS];
     int cell[FIG_ROWS][FIG_COLS];
   } next;
+  struct {
+    int cell[FIG_ROWS][FIG_COLS];
+    Point_t coordinate;
+  } curr_fig;
   UserAction_t action;
   bool hold;
 } TetrisInfo_t;
+
+typedef enum {
+  kStart,
+  kPause,
+  kTerminate,
+  kSpawn,
+  kMoving,
+  kShifting,
+  kAttaching,
+  kGameOver
+} TetrisState_t;
+
+TetrisState_t *initState() {
+  static TetrisState_t state = kStart;
+  return &state;
+}
+
+TetrisState_t *getState() {
+  static TetrisState_t *ptr_state = NULL;
+  if (ptr_state == NULL) {
+    ptr_state = initState();
+  }
+  return ptr_state;
+}
+
+void setState(TetrisState_t new_state) {
+  TetrisState_t *ptr_state = getState();
+  *ptr_state = new_state;
+}
 
 void userInput(UserAction_t action, bool hold);
 TetrisInfo_t *getTetrisInfo();
@@ -61,6 +104,40 @@ void userInput(UserAction_t action, bool hold);
 GameInfo_t updateCurrentState();
 void showState(GameInfo_t info);
 void gameCycle();
+
+void onStartState();
+void onPauseState();
+void onExitState();
+// void onSpawnState();
+void onMovingState();
+void onShiftingState();
+void onAttachingState();
+void onGameOverState();
+
+void handleSpawnState();
+
+void handleSpawnState() {
+  TetrisInfo_t *ptr_tetris_info = getTetrisInfo();
+  ptr_tetris_info->next.cell[0][0] = 1;
+}
+
+void onStartState(UserAction_t action) {
+  switch (action) {
+    case Start:
+      setState(kSpawn);
+      break;
+    case Terminate:
+      setState(kTerminate);
+      break;
+  }
+}
+void onPauseState() {}
+void onExitState() {}
+void onSpawnState() {}
+void onMovingState() {}
+void onShiftingState() {}
+void onAttachingState() {}
+void onGameOverState() {}
 
 TetrisInfo_t *getTetrisInfo() {
   static TetrisInfo_t *ptr_tetris_info = NULL;
@@ -90,15 +167,54 @@ GameInfo_t *getGameInfo() {
   return ptr_game_info;
 }
 
-void game() {
-  GameInfo_t *info = getGameInfo();
-  info->level = 1;
+void userInput(UserAction_t action, bool hold) {
+  TetrisState_t state = *getState();
+  switch (state) {
+    case kStart:
+      onStartState(action);
+      break;
+    case kPause:
+      onPauseState();
+      break;
+    case kTerminate:
+      onExitState();
+      break;
+    // case kSpawn:
+    //   onSpawnState();
+    //   break;
+    case kMoving:
+      onMovingState();
+      break;
+    case kShifting:
+      onShiftingState();
+      break;
+    case kAttaching:
+      onAttachingState();
+      break;
+    case kGameOver:
+      onGameOverState();
+      break;
+  }
 }
 
-void userInput(UserAction_t action, bool hold) { game(); }
+GameInfo_t updateCurrentState() {
+  TetrisState_t state = *getState();
+  switch (state) {
+    case kSpawn:
+      handleSpawnState();
+      setState(kMoving);
+      break;
+      /*
+        case :
+          handle();
+          break;
+        */
+  }
 
-GameInfo_t updateCurrentState() { return *getGameInfo(); }
+  return *getGameInfo();
+}
 
+// BrickGame function
 void showState(GameInfo_t info) {
   int line = 1;
   mvprintw(line++, 0, "Level: %d", info.level);
@@ -119,29 +235,106 @@ void showState(GameInfo_t info) {
   }
 }
 
+// BrickGame function
+UserAction_t getSignal() {
+  int signal = getch();
+  UserAction_t action = Up;
+  switch (signal) {
+    case ENTER_KEY:  // Start game
+      action = Start;
+      break;
+    case KEY_SPACE:  // Rotate the figure
+      action = Action;
+      break;
+    case KEY_LEFT:  // Move figure to left
+      action = Left;
+      break;
+    case KEY_RIGHT:  // Move figure to right
+      action = Right;
+      break;
+    case KEY_UP:
+      // action = Up; don't use in Tetris
+      break;
+    case KEY_DOWN:  // The falling of figure
+      action = Down;
+      break;
+    case KEY_ESCAPE:  // Pause the game
+      action = Pause;
+      break;
+    case KEY_Q:  // Quit from the game
+      action = Terminate;
+      break;
+  }
+  return action;
+}
+
+// DEBUG function
+void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
+  switch (*ptr_state) {
+    case kStart:
+      strcpy(buffer, "Start");
+      break;
+    case kPause:
+      strcpy(buffer, "Pause");
+      break;
+    case kTerminate:
+      strcpy(buffer, "Exit");
+      break;
+    case kSpawn:
+      strcpy(buffer, "Spawn");
+      break;
+    case kMoving:
+      strcpy(buffer, "Moving");
+      break;
+    case kShifting:
+      strcpy(buffer, "Start");
+      break;
+    case kAttaching:
+      strcpy(buffer, "Attaching");
+      break;
+    case kGameOver:
+      strcpy(buffer, "GameOver");
+      break;
+  }
+}
+
+// BrickGame function
 void gameCycle() {
-  // mvaddstr(0, 0, "Menu");
-  UserAction_t action;
+  UserAction_t action = Up;
   bool hold;
   GameInfo_t info;
-  int key;
-  while ((key = getch()) != KEY_ESCAPE) {
-    switch (key) {
-      case 10:  // Enter on the regular keyboard
-        action = Action;
-        break;
-      case KEY_LEFT:
-        action = Left;
-        break;
+  TetrisState_t *ptr_state = getState();
+
+  bool run_game = true;
+  while (run_game) {
+    if (*ptr_state == kGameOver || *ptr_state == kTerminate) {
+      run_game = false;
     }
+
     userInput(action, hold);
     info = updateCurrentState();
+
+#define DEBUG
+#ifdef DEBUG
+    char buffer[15] = {0};
+    char prev_buffer[15] = {0};
+    debugWhichState(ptr_state, buffer);
+    mvprintw(0, 0, "State: %s", buffer);
+#endif  // DEBUG
+
     showState(info);
+
+    if (*ptr_state == kMoving || *ptr_state == kStart /* || ... */) {
+      action = getSignal();
+    }
   }
 }
 
 int main() {
   WIN_INIT();
+  // run BrickGame
+  // Should BrickGame let choose the game?
+  // The game was choosed
   gameCycle();
   endwin();
   return 0;
