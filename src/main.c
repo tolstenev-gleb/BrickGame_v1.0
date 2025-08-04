@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #define WIN_INIT()        \
   {                       \
@@ -12,6 +14,7 @@
     keypad(stdscr, true); \
     noecho();             \
     curs_set(0);          \
+    srand(time(NULL));    \
   }
 
 #define KEY_ESCAPE 27
@@ -115,10 +118,87 @@ void onAttachingState();
 void onGameOverState();
 
 void handleSpawnState();
+void handleShiftingState();
+
+void handleShiftingState() {
+  TetrisInfo_t *ptr_tetris_info = getTetrisInfo();
+  if (ptr_tetris_info->curr_fig.coordinate.y < 18) {
+  ptr_tetris_info->curr_fig.coordinate.y += 1;
+  for (int i = 0; i < ROWS; i++) {
+    for (int j = 0; j < COLS; j++) {
+      ptr_tetris_info->field.cell[i][j] = 0;
+    }
+  }
+  for (int i = 0; i < FIG_ROWS; i++) {
+    for (int j = 0; j < FIG_COLS; j++) {
+      if (ptr_tetris_info->curr_fig.cell[i][j]) {
+        int fx = ptr_tetris_info->curr_fig.coordinate.x + j;
+        int fy = ptr_tetris_info->curr_fig.coordinate.y + i;
+        if (fx >= 0 && fx < COLS && fy >= 0 && fy < ROWS)
+          ptr_tetris_info->field.cell[fy][fx] =
+              ptr_tetris_info->curr_fig.cell[i][j];
+      }
+    }
+  } }
+  else {
+    setState(kSpawn);
+  }
+}
+
+void copyTetromino(int dst_fig[FIG_ROWS][FIG_COLS],
+                   int src_fig[FIG_ROWS][FIG_COLS]) {
+  for (int i = 0; i < FIG_ROWS; i++) {
+    for (int j = 0; j < FIG_COLS; j++) {
+      dst_fig[i][j] = src_fig[i][j];
+    }
+  }
+}
 
 void handleSpawnState() {
   TetrisInfo_t *ptr_tetris_info = getTetrisInfo();
-  ptr_tetris_info->next.cell[0][0] = 1;
+  int tetrominos[7][FIG_ROWS][FIG_COLS] = {
+      {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // I
+      {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // O
+      {{0, 1, 0, 0}, {1, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // T
+      {{0, 1, 1, 0}, {1, 1, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // S
+      {{1, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // Z
+      {{1, 0, 0, 0}, {1, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // J
+      {{0, 0, 1, 0}, {1, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}};  // L
+
+  // Generate next tetromino if empty (start of game)
+  static bool next_empty = true;
+  if (next_empty) {
+    copyTetromino(ptr_tetris_info->next.cell, tetrominos[rand() % 7]);
+    next_empty = false;
+  }
+  copyTetromino(ptr_tetris_info->curr_fig.cell, ptr_tetris_info->next.cell);
+
+  // Set starting coordinate (top center)
+  ptr_tetris_info->curr_fig.coordinate.x = COLS / 2 - 2;
+  ptr_tetris_info->curr_fig.coordinate.y = 0;
+
+  // Place curr_fig into field
+
+  for (int i = 0; i < ROWS; i++) {
+    for (int j = 0; j < COLS; j++) {
+      ptr_tetris_info->field.cell[i][j] = 0;
+    }
+  }
+
+  for (int i = 0; i < FIG_ROWS; i++) {
+    for (int j = 0; j < FIG_COLS; j++) {
+      if (ptr_tetris_info->curr_fig.cell[i][j]) {
+        int fx = ptr_tetris_info->curr_fig.coordinate.x + j;
+        int fy = ptr_tetris_info->curr_fig.coordinate.y + i;
+        if (fx >= 0 && fx < COLS && fy >= 0 && fy < ROWS)
+          ptr_tetris_info->field.cell[fy][fx] =
+              ptr_tetris_info->curr_fig.cell[i][j];
+      }
+    }
+  }
+
+  // Generate new next tetromino
+  copyTetromino(ptr_tetris_info->next.cell, tetrominos[rand() % 7]);
 }
 
 void onStartState(UserAction_t action) {
@@ -135,7 +215,17 @@ void onPauseState() {}
 void onExitState() {}
 void onSpawnState() {}
 void onMovingState() {}
-void onShiftingState() {}
+void onShiftingState(UserAction_t action) {
+  switch (action) {
+#ifdef DEBUG
+    case Start:
+      setState(kSpawn);
+      break;
+#endif
+    case Left:
+      break;
+  }
+}
 void onAttachingState() {}
 void onGameOverState() {}
 
@@ -179,14 +269,11 @@ void userInput(UserAction_t action, bool hold) {
     case kTerminate:
       onExitState();
       break;
-    // case kSpawn:
-    //   onSpawnState();
-    //   break;
     case kMoving:
       onMovingState();
       break;
     case kShifting:
-      onShiftingState();
+      onShiftingState(action);
       break;
     case kAttaching:
       onAttachingState();
@@ -202,7 +289,13 @@ GameInfo_t updateCurrentState() {
   switch (state) {
     case kSpawn:
       handleSpawnState();
-      setState(kMoving);
+      setState(kShifting);
+      break;
+    case kMoving:
+      // handleSpawnState();
+      break;
+    case kShifting:
+      handleShiftingState();
       break;
       /*
         case :
@@ -287,7 +380,7 @@ void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
       strcpy(buffer, "Moving");
       break;
     case kShifting:
-      strcpy(buffer, "Start");
+      strcpy(buffer, "Shifting");
       break;
     case kAttaching:
       strcpy(buffer, "Attaching");
@@ -314,7 +407,6 @@ void gameCycle() {
     userInput(action, hold);
     info = updateCurrentState();
 
-#define DEBUG
 #ifdef DEBUG
     char buffer[15] = {0};
     char prev_buffer[15] = {0};
@@ -324,8 +416,9 @@ void gameCycle() {
 
     showState(info);
 
-    if (*ptr_state == kMoving || *ptr_state == kStart /* || ... */) {
+    if (*ptr_state == kShifting || *ptr_state == kStart /* || ... */) {
       action = getSignal();
+      // sleep(1);
     }
   }
 }
