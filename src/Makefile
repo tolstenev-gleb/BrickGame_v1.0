@@ -13,6 +13,7 @@ debug: main.c
 
 clean:
 	rm -rf \
-	game
+	game \
+	debug 
 
 .PHONY: all game
