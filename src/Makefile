@@ -1,5 +1,5 @@
 CC 			:= gcc
-CFLAGS 		:= #-std=c11 -pedantic -Wall -Wextra -Werror
+CFLAGS 		:= -std=c11 -pedantic -pthread
 GUI_FLAGS 	:= -lncurses
 SRC 		:= main.c
 
