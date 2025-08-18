@@ -32,39 +32,6 @@ void gameCycle() {
 }
 
 // BrickGame function
-UserAction_t getSignal() {
-  int signal = getch();
-  UserAction_t action = Up;
-  switch (signal) {
-    case ENTER_KEY:  // Start game
-      action = Start;
-      break;
-    case KEY_LEFT:  // Move figure to left
-      action = Left;
-      break;
-    case KEY_RIGHT:  // Move figure to right
-      action = Right;
-      break;
-    case KEY_UP:
-      action = Up;  // No effect
-      break;
-    case KEY_SPACE:
-      action = Action;  // Rotate the figure
-      break;
-    case KEY_DOWN:  // The falling of figure
-      action = Down;
-      break;
-    case KEY_ESCAPE:  // Pause the game
-      action = Pause;
-      break;
-    case KEY_Q_LOWER:  // Quit from the BrickGame
-      action = Terminate;
-      break;
-  }
-  return action;
-}
-
-// BrickGame function
 void showState(GameInfo_t info) {
   int line = 0;
 
@@ -139,4 +106,37 @@ void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
       strcpy(buffer, "kGameOver");
       break;
   }
+}
+
+// BrickGame function
+UserAction_t getSignal() {
+  int signal = getch();
+  UserAction_t action = Up;
+  switch (signal) {
+    case ENTER_KEY:  // Start game
+      action = Start;
+      break;
+    case KEY_LEFT:  // Move figure to left
+      action = Left;
+      break;
+    case KEY_RIGHT:  // Move figure to right
+      action = Right;
+      break;
+    case KEY_UP:
+      action = Up;  // No effect
+      break;
+    case KEY_SPACE:
+      action = Action;  // Rotate the figure
+      break;
+    case KEY_DOWN:  // The falling of figure
+      action = Down;
+      break;
+    case KEY_ESCAPE:  // Pause the game
+      action = Pause;
+      break;
+    case KEY_Q_LOWER:  // Quit from the BrickGame
+      action = Terminate;
+      break;
+  }
+  return action;
 }

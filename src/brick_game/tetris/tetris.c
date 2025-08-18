@@ -19,6 +19,184 @@ void setState(TetrisState_t new_state) {
   *ptr_state = new_state;
 }
 
+
+TetrisInfo_t *getTetrisInfo() {
+  static TetrisInfo_t *game = NULL;
+  if (game == NULL) {
+    game = initTetrisInfo();
+  }
+  return game;
+}
+
+TetrisInfo_t *initTetrisInfo() {
+  static TetrisInfo_t game = {0};
+  game.update_interval = 1000;
+  for (int i = 0; i < FIG_ROWS; i++) {
+    game.next.row[i] = game.next.cell[i];
+    game.curr_fig.row[i] = game.curr_fig.cell[i];
+  }
+  for (int i = 0; i < ROWS; i++) {
+    game.field.row[i] = game.field.cell[i];
+  }
+  FILE *file = fopen("highscore.txt", "r");
+  if (file) {
+    char score[10] = {'\0'};
+    fgets(score, sizeof(score), file);
+    game.high_score = atoi(score);
+    fclose(file);
+  }
+  return &game;
+}
+
+
+GameInfo_t *getGameInfo() {
+  TetrisInfo_t *game = getTetrisInfo();
+  static GameInfo_t game_info;
+  static GameInfo_t *ptr_game_info = NULL;
+  if (ptr_game_info == NULL) {
+    game_info.field = (int **)game->field.row;
+    game_info.next = (int **)game->next.row;
+
+    ptr_game_info = &game_info;
+  }
+  game_info.speed = game->speed;
+  game_info.score = game->score;
+  game_info.high_score = game->high_score;
+  game_info.level = game->level;
+  return ptr_game_info;
+}
+
+void clearTetrisInfo() {
+  TetrisInfo_t *game = getTetrisInfo();
+  game->last_tick = currentTimeMs();
+  game->level = 0;
+  game->score = 0;
+  clearArray(game->curr_fig.row, FIG_ROWS, FIG_COLS);
+  clearArray(game->field.row, ROWS, COLS);
+}
+
+void clearArray(int **array, int rows, int cols) {
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      array[i][j] = 0;
+    }
+  }
+}
+
+void onMovingState(UserAction_t action) {
+  switch (action) {
+    case Left:
+      tryMoveFigure(action);
+      break;
+    case Right:
+      tryMoveFigure(action);
+      break;
+    case Down:
+      dropFigure();
+      break;
+    case Action:
+      setState(kRotating);
+      break;
+    case Terminate:
+      setState(kTerminate);
+      break;
+    case Pause:
+      setState(kPause);
+      break;
+    default:
+      break;
+  }
+}
+
+void userInput(UserAction_t action, bool hold) {
+  TetrisState_t state = *getState();
+  switch (state) {
+    case kStart:
+      onStartState(action);
+      break;
+    case kPause:
+      onPauseState(action);
+      break;
+    case kMoving:
+      onMovingState(action);
+      break;
+    case kGameOver:
+      onGameOverState(action);
+      break;
+    default:
+      break;
+  }
+}
+
+GameInfo_t updateCurrentState() {
+  TetrisState_t state = *getState();
+  switch (state) {
+    case kSpawn:
+      handleSpawnState();
+      setState(kShifting);
+      break;
+    case kShifting:
+      if (tryMoveFigure(Down)) {
+        setState(kMoving);
+      } else {
+        setState(kAttaching);
+      }
+      break;
+    case kMoving:
+      if (timeToShift()) {
+        setState(kShifting);
+      }
+      break;
+    case kAttaching:
+      handleAttachingState();
+      if (checkGameOver()) {
+        setState(kGameOver);
+      } else {
+        setState(kSpawn);
+      }
+      break;
+    case kRotating:
+      tryRotateFigure();
+      if (timeToShift()) {
+        setState(kShifting);
+      } else {
+        setState(kMoving);
+      }
+      break;
+    case kTerminate:
+      saveHighScore();
+      break;
+    default:
+      break;
+  }
+  return *getGameInfo();
+}
+
+bool timeToShift() {
+  TetrisInfo_t *game = getTetrisInfo();
+  unsigned long now = currentTimeMs();
+  if (now - game->last_tick >= game->update_interval) {
+    game->last_tick = now;
+    return true;
+  }
+  return false;
+}
+
+unsigned long currentTimeMs() {
+  struct timespec ts;
+  clock_gettime(1, &ts);
+  return (unsigned long)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+void saveHighScore() {
+  TetrisInfo_t *game = getTetrisInfo();
+  FILE *file = fopen("highscore.txt", "w");
+  if (file) {
+    fprintf(file, "%d", game->high_score);
+    fclose(file);
+  }
+}
+
 bool coordinateInField(const int x, const int y) {
   return x >= 0 && x < COLS && y >= 0 && y < ROWS;
 }
@@ -186,23 +364,6 @@ void handleAttachingState() {
   game->curr_fig.rotation = 0;
 }
 
-void clearArray(int **array, int rows, int cols) {
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
-      array[i][j] = 0;
-    }
-  }
-}
-
-void clearTetrisInfo() {
-  TetrisInfo_t *game = getTetrisInfo();
-  game->last_tick = currentTimeMs();
-  game->level = 0;
-  game->score = 0;
-  clearArray(game->curr_fig.row, FIG_ROWS, FIG_COLS);
-  clearArray(game->field.row, ROWS, COLS);
-}
-
 void onGameOverState(UserAction_t action) {
   switch (action) {
     case Start:
@@ -220,76 +381,6 @@ void onGameOverState(UserAction_t action) {
 void dropFigure() {
   while (tryMoveFigure(Down) == true) {
   }
-}
-
-void onMovingState(UserAction_t action) {
-  switch (action) {
-    case Left:
-      tryMoveFigure(action);
-      break;
-    case Right:
-      tryMoveFigure(action);
-      break;
-    case Down:
-      dropFigure();
-      break;
-    case Action:
-      setState(kRotating);
-      break;
-    case Terminate:
-      setState(kTerminate);
-      break;
-    case Pause:
-      setState(kPause);
-      break;
-    default:
-      break;
-  }
-}
-
-TetrisInfo_t *initTetrisInfo() {
-  static TetrisInfo_t game = {0};
-  game.update_interval = 1000;
-  for (int i = 0; i < FIG_ROWS; i++) {
-    game.next.row[i] = game.next.cell[i];
-    game.curr_fig.row[i] = game.curr_fig.cell[i];
-  }
-  for (int i = 0; i < ROWS; i++) {
-    game.field.row[i] = game.field.cell[i];
-  }
-  FILE *file = fopen("highscore.txt", "r");
-  if (file) {
-    char score[10] = {'\0'};
-    fgets(score, sizeof(score), file);
-    game.high_score = atoi(score);
-    fclose(file);
-  }
-  return &game;
-}
-
-TetrisInfo_t *getTetrisInfo() {
-  static TetrisInfo_t *game = NULL;
-  if (game == NULL) {
-    game = initTetrisInfo();
-  }
-  return game;
-}
-
-GameInfo_t *getGameInfo() {
-  TetrisInfo_t *game = getTetrisInfo();
-  static GameInfo_t game_info;
-  static GameInfo_t *ptr_game_info = NULL;
-  if (ptr_game_info == NULL) {
-    game_info.field = (int **)game->field.row;
-    game_info.next = (int **)game->next.row;
-
-    ptr_game_info = &game_info;
-  }
-  game_info.speed = game->speed;
-  game_info.score = game->score;
-  game_info.high_score = game->high_score;
-  game_info.level = game->level;
-  return ptr_game_info;
 }
 
 bool tryMoveFigure(UserAction_t action) {
@@ -922,94 +1013,3 @@ void rotateFigureL() {
       break;
   }
 }
-
-bool timeToShift() {
-  TetrisInfo_t *game = getTetrisInfo();
-  unsigned long now = currentTimeMs();
-  if (now - game->last_tick >= game->update_interval) {
-    game->last_tick = now;
-    return true;
-  }
-  return false;
-}
-
-void saveHighScore() {
-  TetrisInfo_t *game = getTetrisInfo();
-  FILE *file = fopen("highscore.txt", "w");
-  if (file) {
-    fprintf(file, "%d", game->high_score);
-    fclose(file);
-  }
-}
-
-void userInput(UserAction_t action, bool hold) {
-  TetrisState_t state = *getState();
-  switch (state) {
-    case kStart:
-      onStartState(action);
-      break;
-    case kPause:
-      onPauseState(action);
-      break;
-    case kMoving:
-      onMovingState(action);
-      break;
-    case kGameOver:
-      onGameOverState(action);
-      break;
-    default:
-      break;
-  }
-}
-
-GameInfo_t updateCurrentState() {
-  TetrisState_t state = *getState();
-  switch (state) {
-    case kSpawn:
-      handleSpawnState();
-      setState(kShifting);
-      break;
-    case kShifting:
-      if (tryMoveFigure(Down)) {
-        setState(kMoving);
-      } else {
-        setState(kAttaching);
-      }
-      break;
-    case kMoving:
-      if (timeToShift()) {
-        setState(kShifting);
-      }
-      break;
-    case kAttaching:
-      handleAttachingState();
-      if (checkGameOver()) {
-        setState(kGameOver);
-      } else {
-        setState(kSpawn);
-      }
-      break;
-    case kRotating:
-      tryRotateFigure();
-      if (timeToShift()) {
-        setState(kShifting);
-      } else {
-        setState(kMoving);
-      }
-      break;
-    case kTerminate:
-      saveHighScore();
-      break;
-    default:
-      break;
-  }
-  return *getGameInfo();
-}
-
-unsigned long currentTimeMs() {
-  struct timespec ts;
-  clock_gettime(1, &ts);
-  return (unsigned long)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
-}
-
-// BrickGame function
