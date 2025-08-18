@@ -1,6 +1,5 @@
 #include "tetris.h"
 
-
 TetrisState_t *initState() {
   static TetrisState_t state = kStart;
   return &state;
@@ -19,7 +18,6 @@ void setState(TetrisState_t new_state) {
   *ptr_state = new_state;
 }
 
-
 TetrisInfo_t *getTetrisInfo() {
   static TetrisInfo_t *game = NULL;
   if (game == NULL) {
@@ -29,8 +27,8 @@ TetrisInfo_t *getTetrisInfo() {
 }
 
 TetrisInfo_t *initTetrisInfo() {
-  static TetrisInfo_t game = {0};
-  game.update_interval = 1000;
+  srand(time(NULL));
+  static TetrisInfo_t game = {.run_game = true, .update_interval = 1000};
   for (int i = 0; i < FIG_ROWS; i++) {
     game.next.row[i] = game.next.cell[i];
     game.curr_fig.row[i] = game.curr_fig.cell[i];
@@ -48,7 +46,6 @@ TetrisInfo_t *initTetrisInfo() {
   return &game;
 }
 
-
 GameInfo_t *getGameInfo() {
   TetrisInfo_t *game = getTetrisInfo();
   static GameInfo_t game_info;
@@ -59,10 +56,15 @@ GameInfo_t *getGameInfo() {
 
     ptr_game_info = &game_info;
   }
-  game_info.speed = game->speed;
-  game_info.score = game->score;
-  game_info.high_score = game->high_score;
-  game_info.level = game->level;
+  if (game->run_game) {
+    game_info.speed = game->speed;
+    game_info.score = game->score;
+    game_info.high_score = game->high_score;
+    game_info.level = game->level;
+  } else {
+    game_info.field = NULL;
+    game_info.next = NULL;
+  }
   return ptr_game_info;
 }
 
@@ -117,6 +119,15 @@ void userInput(UserAction_t action, bool hold) {
     case kPause:
       onPauseState(action);
       break;
+      // Нет break в kShifting.
+      // Во время kShifting может поступить сигнал на перемещение.
+      // Чтобы его не игнорировать, сразу переходим к обработке kMoving
+    case kShifting:
+      if (tryMoveFigure(Down)) {
+        setState(kMoving);
+      } else {
+        setState(kAttaching);
+      }
     case kMoving:
       onMovingState(action);
       break;
@@ -135,24 +146,21 @@ GameInfo_t updateCurrentState() {
       handleSpawnState();
       setState(kShifting);
       break;
-    case kShifting:
-      if (tryMoveFigure(Down)) {
-        setState(kMoving);
-      } else {
-        setState(kAttaching);
-      }
-      break;
     case kMoving:
       if (timeToShift()) {
         setState(kShifting);
       }
       break;
     case kAttaching:
-      handleAttachingState();
-      if (checkGameOver()) {
-        setState(kGameOver);
+      if (tryMoveFigure(Down)) {
+        setState(kMoving);
       } else {
-        setState(kSpawn);
+        handleAttachingState();
+        if (checkGameOver()) {
+          setState(kGameOver);
+        } else {
+          setState(kSpawn);
+        }
       }
       break;
     case kRotating:
@@ -164,12 +172,18 @@ GameInfo_t updateCurrentState() {
       }
       break;
     case kTerminate:
-      saveHighScore();
+      handleTerminateState();
       break;
     default:
       break;
   }
   return *getGameInfo();
+}
+
+void handleTerminateState() {
+  TetrisInfo_t *game = getTetrisInfo();
+  saveHighScore();
+  game->run_game = false;
 }
 
 bool timeToShift() {
@@ -192,7 +206,7 @@ void saveHighScore() {
   TetrisInfo_t *game = getTetrisInfo();
   FILE *file = fopen("highscore.txt", "w");
   if (file) {
-    fprintf(file, "%d", game->high_score);
+    fprintf(file, "%d\n", game->high_score);
     fclose(file);
   }
 }
@@ -239,8 +253,7 @@ void handleSpawnState() {
 
   // Set starting coordinate (top center)
   game->curr_fig.coordinate.x = 3;
-  // game->curr_fig.coordinate.y = game->curr_fig.type == kFigureI ? -3 : -2;
-  game->curr_fig.coordinate.y = -3;
+  game->curr_fig.coordinate.y = (game->curr_fig.type == kFigureI ? -2 : -3);
 
   // Generate new next tetromino
   copyTetromino(game->next.cell, tetrominoes[type]);
@@ -262,7 +275,7 @@ void onStartState(UserAction_t action) {
 
 void onPauseState(UserAction_t action) {
   switch (action) {
-    case Action:
+    case Start:
       setState(kMoving);
       break;
     case Terminate:
@@ -362,25 +375,6 @@ void handleAttachingState() {
 
   game->curr_fig.hash_all_rotation = 0;
   game->curr_fig.rotation = 0;
-}
-
-void onGameOverState(UserAction_t action) {
-  switch (action) {
-    case Start:
-      clearTetrisInfo();
-      setState(kSpawn);
-      break;
-    case Terminate:
-      setState(kTerminate);
-      break;
-    default:
-      break;
-  }
-}
-
-void dropFigure() {
-  while (tryMoveFigure(Down) == true) {
-  }
 }
 
 bool tryMoveFigure(UserAction_t action) {
@@ -489,6 +483,25 @@ void eraseCurrentFigureOnField() {
   }
 }
 
+void onGameOverState(UserAction_t action) {
+  switch (action) {
+    case Start:
+      clearTetrisInfo();
+      setState(kSpawn);
+      break;
+    case Terminate:
+      setState(kTerminate);
+      break;
+    default:
+      break;
+  }
+}
+
+void dropFigure() {
+  while (tryMoveFigure(Down) == true) {
+  }
+}
+
 bool tryRotateFigure() {
   // Нужно менять логику расположения на поле
   TetrisInfo_t *game = getTetrisInfo();
@@ -549,8 +562,6 @@ bool tryRotateFigure() {
   }
   return can_move;
 }
-
-// Clear previos pixels and set new
 void rotateFigureI() {
   TetrisInfo_t *game = getTetrisInfo();
   switch (game->curr_fig.rotation) {

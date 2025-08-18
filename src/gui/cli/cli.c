@@ -1,6 +1,6 @@
 #include "cli.h"
 
-void init_ncurses() {
+void initNcurses() {
   initscr();
   cbreak();
   keypad(stdscr, true);
@@ -12,70 +12,67 @@ void init_ncurses() {
 void gameCycle() {
   UserAction_t action = Up;
   GameInfo_t info;
-  TetrisState_t *ptr_state = getState();
   bool run_game = true;
+  bool hold;
   struct timespec ts = {.tv_sec = 0, .tv_nsec = 100000};  // 100 microsec
-  while (run_game) {
-    if (*ptr_state == kTerminate) {
-      run_game = false;
-    }
-
-    userInput(action, true);
+  do {
+    action = getSignal();
+    hold = (action == Down ? true : false);
+    userInput(action, hold);
     info = updateCurrentState();
-    showState(info);
-    if (*ptr_state == kMoving || *ptr_state == kStart ||
-        *ptr_state == kGameOver || *ptr_state == kPause) {
-      action = getSignal();
-    }
     nanosleep(&ts, NULL);
-  }
+    run_game = showState(info);
+  } while (run_game);
 }
 
-// BrickGame function
-void showState(GameInfo_t info) {
-  int line = 0;
-
+bool showState(GameInfo_t info) {
+  bool run_game = true;
+  if (info.field == NULL && info.next == NULL) {
+    run_game = false;
+  } else {
+    int line = 0;
 #ifdef DEBUG
-  TetrisState_t *ptr_state = getState();
-  TetrisInfo_t *ptr_info = getTetrisInfo();
-  char buffer[15] = {0};
-  char prev_buffer[15] = {0};
-  debugWhichState(ptr_state, buffer);
-  mvprintw(line, 0, "State: %s", "               ");
-  mvprintw(line++, 0, "State: %s", buffer);
-  mvprintw(line++, 0, "coordinate.y: %d ", ptr_info->curr_fig.coordinate.y);
-  mvprintw(line++, 0, "coordinate.x: %d ", ptr_info->curr_fig.coordinate.x);
-  int field_line = 0;
+    TetrisState_t *ptr_state = getState();
+    TetrisInfo_t *ptr_info = getTetrisInfo();
+    char buffer[15] = {0};
+    char prev_buffer[15] = {0};
+    debugWhichState(ptr_state, buffer);
+    mvprintw(line, 0, "State: %s", "                            ");
+    mvprintw(line++, 0, "State: %s", buffer);
+    mvprintw(line++, 0, "coordinate.y: %d ", ptr_info->curr_fig.coordinate.y);
+    mvprintw(line++, 0, "coordinate.x: %d ", ptr_info->curr_fig.coordinate.x);
+    int field_line = 0;
 #endif  // DEBUG
-
-  mvprintw(line++, 0, "Level: %d", info.level);
-  mvprintw(line++, 0, "Score: %d", info.score);
-  mvprintw(line++, 0, "High score: %d", info.high_score);
-  mvprintw(line++, 0, "Speed: %d", info.speed);
-  mvprintw(line++, 0, "Next:");
-  for (int i = 0; i < FIG_ROWS; i++, line++) {
-    for (int j = 0; j < FIG_COLS; j++) {
-      mvprintw(line, j * 2, "%s", info.next[i][j] ? "[]" : " .");
-    }
-  }
-  mvprintw(line++, 0, "Field:");
-  for (int i = 0; i < ROWS; i++, line++) {
-#ifdef DEBUG
-    if (i == 0) {
-      for (int j = 0; j < COLS; j++) {
-        mvprintw(line, j * 2, "%2d", j);
+    mvprintw(line++, 0, "Level: %d", info.level);
+    mvprintw(line++, 0, "Score: %d", info.score);
+    mvprintw(line++, 0, "High score: %d", info.high_score);
+    mvprintw(line++, 0, "Speed: %d", info.speed);
+    mvprintw(line++, 0, "Next:");
+    for (int i = 0; i < 4; i++, line++) {
+      for (int j = 0; j < 4; j++) {
+        mvprintw(line, j * 2, "%s", info.next[i][j] ? "[]" : " .");
       }
-      line++;
     }
-    mvprintw(line, 21, "%d", field_line++);
+    mvprintw(line++, 0, "Field:");
+    for (int i = 0; i < 20; i++, line++) {
+#ifdef DEBUG
+      if (i == 0) {
+        for (int j = 0; j < 10; j++) {
+          mvprintw(line, j * 2, "%2d", j);
+        }
+        line++;
+      }
+      mvprintw(line, 21, "%d", field_line++);
 #endif  // DEBUG
-    for (int j = 0; j < COLS; j++) {
-      mvprintw(line, j * 2, "%s", info.field[i][j] ? "[]" : " .");
+      for (int j = 0; j < 10; j++) {
+        mvprintw(line, j * 2, "%s", info.field[i][j] ? "[]" : " .");
+      }
     }
   }
+  return run_game;
 }
 
-// DEBUG function
+#ifdef DEBUG
 void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
   switch (*ptr_state) {
     case kStart:
@@ -107,6 +104,7 @@ void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
       break;
   }
 }
+#endif  // DEBUG
 
 // BrickGame function
 UserAction_t getSignal() {
