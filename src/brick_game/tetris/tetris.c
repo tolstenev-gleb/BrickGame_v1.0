@@ -36,7 +36,7 @@ TetrisInfo_t *initTetrisInfo() {
   for (int i = 0; i < ROWS; i++) {
     game.field.row[i] = game.field.cell[i];
   }
-  FILE *file = fopen("highscore.txt", "r");
+  FILE *file = fopen("highscore.txt", "r");  // Может использовать SQLite?
   if (file) {
     char score[10] = {'\0'};
     fgets(score, sizeof(score), file);
@@ -62,6 +62,8 @@ GameInfo_t *getGameInfo() {
     game_info.high_score = game->high_score;
     game_info.level = game->level;
   } else {
+    // Установка NULL спользуется для передачи на интерфейс информации о том,
+    // что пользователь хочет выйти из программы BrickGame
     game_info.field = NULL;
     game_info.next = NULL;
   }
@@ -362,6 +364,8 @@ void handleAttachingState() {
   if (game->score > game->high_score) {
     game->high_score = game->score;
   }
+
+#ifndef NO_LIMITS
   // Set new level necessary  // bonus part 3
   if (count_filled_lines > 0 && game->level < 10) {
     game->level = game->score / 600;
@@ -372,9 +376,50 @@ void handleAttachingState() {
     game->speed = game->level;
     game->update_interval = 1000 - game->speed * 75;
   }
+#endif  // NO_LIMITS
+
+#ifdef NO_LIMITS
+  if (count_filled_lines > 0) {
+    game->level = game->score / 600;
+    game->speed = game->level;
+    game->update_interval = 1000 - game->speed * 75;
+  }
+#endif  // NO_LIMITS
 
   game->curr_fig.hash_all_rotation = 0;
   game->curr_fig.rotation = 0;
+}
+
+bool checkNewPowition() {
+  TetrisInfo_t *game = getTetrisInfo();
+  bool can_move = true;
+  for (int i = 0; i < FIG_ROWS && can_move; i++) {
+    for (int j = 0; j < FIG_COLS && can_move; j++) {
+      if (game->curr_fig.cell[i][j]) {
+        int new_x = game->curr_fig.coordinate.x + game->curr_fig.offset_x + j;
+        int new_y = game->curr_fig.coordinate.y + game->curr_fig.offset_y + i;
+        if (figureCannotMove(new_x, new_y, game->field.cell[new_y][new_x])) {
+          can_move = false;
+        }
+      }
+    }
+  }
+  return can_move;
+}
+
+void addFigureOnField() {
+  TetrisInfo_t *game = getTetrisInfo();
+  for (int i = 0; i < FIG_ROWS; i++) {
+    for (int j = 0; j < FIG_COLS; j++) {
+      if (game->curr_fig.cell[i][j]) {
+        int new_x = game->curr_fig.coordinate.x + game->curr_fig.offset_x + j;
+        int new_y = game->curr_fig.coordinate.y + game->curr_fig.offset_y + i;
+        if (coordinateInField(new_x, new_y)) {
+          game->field.cell[new_y][new_x] = game->curr_fig.cell[i][j];
+        }
+      }
+    }
+  }
 }
 
 bool tryMoveFigure(UserAction_t action) {
@@ -384,59 +429,25 @@ bool tryMoveFigure(UserAction_t action) {
   game->curr_fig.offset_x += (action == Right);
   game->curr_fig.offset_y = (action == Down);
 
-  int x = game->curr_fig.coordinate.x;
-  int y = game->curr_fig.coordinate.y;
-  int offset_x = game->curr_fig.offset_x;
-  int offset_y = game->curr_fig.offset_y;
-
   // Erase current position
   eraseCurrentFigureOnField();
 
-  // Check new position
-  bool can_move = true;
-  for (int i = 0; i < FIG_ROWS && can_move; i++) {
-    for (int j = 0; j < FIG_COLS && can_move; j++) {
-      if (game->curr_fig.cell[i][j]) {
-        int new_x = x + j + offset_x;
-        int new_y = y + i + offset_y;
-        if (figureCannotMove(new_x, new_y, game->field.cell[new_y][new_x])) {
-          can_move = false;
-        }
-      }
-    }
-  }
+  // Check new position with offset
+  bool can_move = checkNewPowition();
 
   if (can_move) {
     // Add figure to new position
-    for (int i = 0; i < FIG_ROWS; i++) {
-      for (int j = 0; j < FIG_COLS; j++) {
-        if (game->curr_fig.cell[i][j]) {
-          int fx = x + j + offset_x;
-          int fy = y + i + offset_y;
-          if (coordinateInField(fx, fy)) {
-            game->field.cell[fy][fx] = game->curr_fig.cell[i][j];
-          }
-        }
-      }
-    }
-    game->curr_fig.coordinate.x += offset_x;
-    game->curr_fig.coordinate.y += offset_y;
+    addFigureOnField();
+    game->curr_fig.coordinate.x += game->curr_fig.offset_x;
+    game->curr_fig.coordinate.y += game->curr_fig.offset_y;
+    game->curr_fig.offset_x = 0;
+    game->curr_fig.offset_y = 0;
   } else {
     // Turn back last position
-    for (int i = 0; i < FIG_ROWS; i++) {
-      for (int j = 0; j < FIG_COLS; j++) {
-        if (game->curr_fig.cell[i][j]) {
-          int fx = x + j;
-          int fy = y + i;
-          if (coordinateInField(fx, fy)) {
-            game->field.cell[fy][fx] = game->curr_fig.cell[i][j];
-          }
-        }
-      }
-    }
+    game->curr_fig.offset_x = 0;
+    game->curr_fig.offset_y = 0;
+    addFigureOnField();
   }
-  game->curr_fig.offset_x = 0;
-  game->curr_fig.offset_y = 0;
   return can_move;
 }
 
@@ -506,9 +517,6 @@ bool tryRotateFigure() {
   // Нужно менять логику расположения на поле
   TetrisInfo_t *game = getTetrisInfo();
 
-  int x = game->curr_fig.coordinate.x;
-  int y = game->curr_fig.coordinate.y;
-
   // Erase current position
   eraseCurrentFigureOnField();
 
@@ -516,52 +524,20 @@ bool tryRotateFigure() {
   rotateCurrentFigure();
 
   // Check new position
-  bool can_move = true;
-  for (int i = 0; i < FIG_ROWS && can_move; i++) {
-    for (int j = 0; j < FIG_COLS && can_move; j++) {
-      if (game->curr_fig.cell[i][j]) {
-        int new_x = x + j;
-        int new_y = y + i;
-        if (figureCannotMove(new_x, new_y, game->field.cell[new_y][new_x])) {
-          can_move = false;
-        }
-      }
-    }
-  }
+  bool can_move = checkNewPowition();
 
   if (can_move) {
     // Add figure to new position
-    for (int i = 0; i < FIG_ROWS; i++) {
-      for (int j = 0; j < FIG_COLS; j++) {
-        if (game->curr_fig.cell[i][j]) {
-          int fx = x + j;
-          int fy = y + i;
-          if (coordinateInField(fx, fy)) {
-            game->field.cell[fy][fx] = game->curr_fig.cell[i][j];
-          }
-        }
-      }
-    }
+    addFigureOnField();
   } else {
     // Turn back last position
-
     game->curr_fig.hash_all_rotation -= 1;
     rotateCurrentFigure();
-
-    for (int i = 0; i < FIG_ROWS; i++) {
-      for (int j = 0; j < FIG_COLS; j++) {
-        if (game->curr_fig.cell[i][j]) {
-          int fx = x + j;
-          int fy = y + i;
-          if (coordinateInField(fx, fy)) {
-            game->field.cell[fy][fx] = game->curr_fig.cell[i][j];
-          }
-        }
-      }
-    }
+    addFigureOnField();
   }
   return can_move;
 }
+
 void rotateFigureI() {
   TetrisInfo_t *game = getTetrisInfo();
   switch (game->curr_fig.rotation) {

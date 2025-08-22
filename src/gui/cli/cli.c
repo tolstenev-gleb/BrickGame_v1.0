@@ -30,44 +30,62 @@ bool showState(GameInfo_t info) {
   if (info.field == NULL && info.next == NULL) {
     run_game = false;
   } else {
-    int line = 0;
+    int left_line = 0;
+    int right_line = 0;
+    int left_side = 0;  // coordinate for field and help text
+    int right_side = 23;
 #ifdef DEBUG
     TetrisState_t *ptr_state = getState();
     TetrisInfo_t *ptr_info = getTetrisInfo();
     char buffer[15] = {0};
     char prev_buffer[15] = {0};
     debugWhichState(ptr_state, buffer);
-    mvprintw(line, 0, "State: %s", "                            ");
-    mvprintw(line++, 0, "State: %s", buffer);
-    mvprintw(line++, 0, "coordinate.y: %d ", ptr_info->curr_fig.coordinate.y);
-    mvprintw(line++, 0, "coordinate.x: %d ", ptr_info->curr_fig.coordinate.x);
+    mvprintw(left_line, left_side, "State: %s", "                            ");
+    mvprintw(left_line++, left_side, "State: %s", buffer);
+    mvprintw(left_line++, left_side, "coordinate.y: %d ",
+             ptr_info->curr_fig.coordinate.y);
+    mvprintw(left_line++, left_side, "coordinate.x: %d ",
+             ptr_info->curr_fig.coordinate.x);
     int field_line = 0;
 #endif  // DEBUG
-    mvprintw(line++, 0, "Level: %d", info.level);
-    mvprintw(line++, 0, "Score: %d", info.score);
-    mvprintw(line++, 0, "High score: %d", info.high_score);
-    mvprintw(line++, 0, "Speed: %d", info.speed);
-    mvprintw(line++, 0, "Next:");
-    for (int i = 0; i < 4; i++, line++) {
+    mvprintw(right_line++, right_side, "Score: %d", info.score);
+    mvprintw(right_line++, right_side, "High score: %d", info.high_score);
+    mvprintw(right_line++, right_side, "Level: %d", info.level);
+    mvprintw(right_line++, right_side, "Speed: %d", info.speed);
+    right_line++;
+    mvprintw(right_line++, right_side, "Next:");
+    for (int i = 0; i < 4; i++, right_line++) {
       for (int j = 0; j < 4; j++) {
-        mvprintw(line, j * 2, "%s", info.next[i][j] ? "[]" : " .");
+        mvprintw(right_line, right_side + j * 2, "%s",
+                 info.next[i][j] ? "[]" : " .");
       }
     }
-    mvprintw(line++, 0, "Field:");
-    for (int i = 0; i < 20; i++, line++) {
+    for (int i = 0; i < 20; i++, left_line++) {
 #ifdef DEBUG
       if (i == 0) {
         for (int j = 0; j < 10; j++) {
-          mvprintw(line, j * 2, "%2d", j);
+          mvprintw(left_line, j * 2, "%2d", j);
         }
-        line++;
+        left_line++;
       }
-      mvprintw(line, 21, "%d", field_line++);
+      mvprintw(left_line, 21, "%d", field_line++);
 #endif  // DEBUG
       for (int j = 0; j < 10; j++) {
-        mvprintw(line, j * 2, "%s", info.field[i][j] ? "[]" : " .");
+        mvprintw(left_line, left_side + j * 2, "%s",
+                 info.field[i][j] ? "[]" : " .");
       }
     }
+#ifdef HELP
+    left_line++;
+    mvprintw(left_line++, left_side, "%s", "'Enter' | start game / unpause");
+    mvprintw(left_line++, left_side, "%s", " 'Esc'  | pause");
+    mvprintw(left_line++, left_side, "%s", "  'q'   | exit");
+    mvprintw(left_line++, left_side, "%s", "'space' | action");
+    mvprintw(left_line++, left_side, "%s",
+             "'arrows'| move left, right, up, down");
+#endif  // #ifdef HELP
+
+
   }
   return run_game;
 }

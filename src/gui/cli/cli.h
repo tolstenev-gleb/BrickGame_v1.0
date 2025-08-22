@@ -18,4 +18,8 @@ void gameCycle();
 bool showState(GameInfo_t info);
 UserAction_t getSignal();
 
+#ifdef DEBUG
+void debugWhichState(TetrisState_t *ptr_state, char *buffer);
+#endif  // DEBUG
+
 #endif  // BRICK_GAME_GUI_CLI_H_

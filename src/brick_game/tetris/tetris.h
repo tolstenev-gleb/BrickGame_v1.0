@@ -125,6 +125,8 @@ bool checkGameOver();
 bool isLineFill(int line);
 void moveGroundDown(int line);
 bool tryMoveFigure(UserAction_t action);
+bool checkNewPowition();
+void addFigureOnField();
 void rotateCurrentFigure();
 void eraseCurrentFigureOnField();
 void dropFigure();
