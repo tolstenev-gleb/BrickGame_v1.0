@@ -13,15 +13,13 @@ void gameCycle() {
   UserAction_t action = Up;
   GameInfo_t info;
   bool run_game = true;
-  bool hold;
   struct timespec ts = {.tv_sec = 0, .tv_nsec = 100000};  // 100 microsec
   do {
     action = getSignal();
-    hold = (action == Down ? true : false);
-    userInput(action, hold);
+    userInput(action, false);
     info = updateCurrentState();
-    nanosleep(&ts, NULL);
     run_game = showState(info);
+    nanosleep(&ts, NULL);
   } while (run_game);
 }
 
@@ -48,10 +46,10 @@ bool showState(GameInfo_t info) {
              ptr_info->curr_fig.coordinate.x);
     int field_line = 0;
 #endif  // DEBUG
-    mvprintw(right_line++, right_side, "Score: %d", info.score);
-    mvprintw(right_line++, right_side, "High score: %d", info.high_score);
-    mvprintw(right_line++, right_side, "Level: %d", info.level);
-    mvprintw(right_line++, right_side, "Speed: %d", info.speed);
+    mvprintw(right_line++, right_side, "Score: %d          ", info.score);
+    mvprintw(right_line++, right_side, "High score: %d     ", info.high_score);
+    mvprintw(right_line++, right_side, "Level: %d          ", info.level);
+    mvprintw(right_line++, right_side, "Speed: %d          ", info.speed);
     right_line++;
     mvprintw(right_line++, right_side, "Next:");
     for (int i = 0; i < 4; i++, right_line++) {
@@ -77,15 +75,13 @@ bool showState(GameInfo_t info) {
     }
 #ifdef HELP
     left_line++;
-    mvprintw(left_line++, left_side, "%s", "'Enter' | start game / unpause");
-    mvprintw(left_line++, left_side, "%s", " 'Esc'  | pause");
+    mvprintw(left_line++, left_side, "%s", "'Enter' | start game");
+    mvprintw(left_line++, left_side, "%s", " 'Esc'  | pause / unpause");
     mvprintw(left_line++, left_side, "%s", "  'q'   | exit");
     mvprintw(left_line++, left_side, "%s", "'space' | action");
     mvprintw(left_line++, left_side, "%s",
              "'arrows'| move left, right, up, down");
 #endif  // #ifdef HELP
-
-
   }
   return run_game;
 }

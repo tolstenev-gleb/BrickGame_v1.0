@@ -29,18 +29,16 @@ TetrisInfo_t *getTetrisInfo() {
 TetrisInfo_t *initTetrisInfo() {
   srand(time(NULL));
   static TetrisInfo_t game = {.run_game = true, .update_interval = 1000};
-  for (int i = 0; i < FIG_ROWS; i++) {
+  for (int i = 0; i < kFigRows; i++) {
     game.next.row[i] = game.next.cell[i];
     game.curr_fig.row[i] = game.curr_fig.cell[i];
   }
-  for (int i = 0; i < ROWS; i++) {
+  for (int i = 0; i < kRows; i++) {
     game.field.row[i] = game.field.cell[i];
   }
-  FILE *file = fopen("highscore.txt", "r");  // Может использовать SQLite?
+  FILE *file = fopen("highscore_tetris.txt", "r");
   if (file) {
-    char score[10] = {'\0'};
-    fgets(score, sizeof(score), file);
-    game.high_score = atoi(score);
+    fscanf(file, "%d", &game.high_score);
     fclose(file);
   }
   return &game;
@@ -74,14 +72,15 @@ void clearTetrisInfo() {
   TetrisInfo_t *game = getTetrisInfo();
   game->last_tick = currentTimeMs();
   game->level = 0;
+  game->speed = 0;
   game->score = 0;
-  clearArray(game->curr_fig.row, FIG_ROWS, FIG_COLS);
-  clearArray(game->field.row, ROWS, COLS);
+  clearArray(game->curr_fig.row, kFigRows, kFigCols);
+  clearArray(game->field.row, kRows, kCols);
 }
 
-void clearArray(int **array, int rows, int cols) {
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
+void clearArray(int **array, int kRows, int kCols) {
+  for (int i = 0; i < kRows; i++) {
+    for (int j = 0; j < kCols; j++) {
       array[i][j] = 0;
     }
   }
@@ -206,7 +205,7 @@ unsigned long currentTimeMs() {
 
 void saveHighScore() {
   TetrisInfo_t *game = getTetrisInfo();
-  FILE *file = fopen("highscore.txt", "w");
+  FILE *file = fopen("highscore_tetris.txt", "w");
   if (file) {
     fprintf(file, "%d\n", game->high_score);
     fclose(file);
@@ -214,17 +213,17 @@ void saveHighScore() {
 }
 
 bool coordinateInField(const int x, const int y) {
-  return x >= 0 && x < COLS && y >= 0 && y < ROWS;
+  return x >= 0 && x < kCols && y >= 0 && y < kRows;
 }
 
 bool figureCannotMove(const int x, const int y, const int field_cell) {
-  return x < 0 || x >= COLS || y >= ROWS || field_cell == 1;
+  return x < 0 || x >= kCols || y >= kRows || field_cell == 1;
 }
 
-void copyTetromino(int dst_fig[FIG_ROWS][FIG_COLS],
-                   int src_fig[FIG_ROWS][FIG_COLS]) {
-  for (int i = 0; i < FIG_ROWS; i++) {
-    for (int j = 0; j < FIG_COLS; j++) {
+void copyTetromino(int dst_fig[kFigRows][kFigCols],
+                   int src_fig[kFigRows][kFigCols]) {
+  for (int i = 0; i < kFigRows; i++) {
+    for (int j = 0; j < kFigCols; j++) {
       dst_fig[i][j] = src_fig[i][j];
     }
   }
@@ -232,7 +231,7 @@ void copyTetromino(int dst_fig[FIG_ROWS][FIG_COLS],
 
 void handleSpawnState() {
   TetrisInfo_t *game = getTetrisInfo();
-  static int tetrominoes[7][FIG_ROWS][FIG_COLS] = {
+  static int tetrominoes[7][kFigRows][kFigCols] = {
       {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureI
       {{0, 0, 0, 0}, {1, 1, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureL
       {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureO
@@ -277,7 +276,7 @@ void onStartState(UserAction_t action) {
 
 void onPauseState(UserAction_t action) {
   switch (action) {
-    case Start:
+    case Pause:
       setState(kMoving);
       break;
     case Terminate:
@@ -291,8 +290,8 @@ void onPauseState(UserAction_t action) {
 int getLowestCoordinate() {
   TetrisInfo_t *game = getTetrisInfo();
   int lowest_row = 0;
-  for (int i = FIG_ROWS - 1; i > 0 && lowest_row == 0; i--) {
-    for (int j = 0; j < FIG_COLS && lowest_row == 0; j++) {
+  for (int i = kFigRows - 1; i > 0 && lowest_row == 0; i--) {
+    for (int j = 0; j < kFigCols && lowest_row == 0; j++) {
       if (game->curr_fig.cell[i][j]) {
         lowest_row = i;
       }
@@ -314,7 +313,7 @@ bool checkGameOver() {
 bool isLineFill(int line) {
   TetrisInfo_t *game = getTetrisInfo();
   bool line_is_fill = true;
-  for (int j = 0; j < COLS && line_is_fill; j++) {
+  for (int j = 0; j < kCols && line_is_fill; j++) {
     if (game->field.cell[line][j] == false) {
       line_is_fill = false;
     }
@@ -325,11 +324,11 @@ bool isLineFill(int line) {
 void moveGroundDown(int line) {
   TetrisInfo_t *game = getTetrisInfo();
   for (int i = line; i > 0; i--) {
-    for (int j = 0; j < COLS; j++) {
+    for (int j = 0; j < kCols; j++) {
       game->field.cell[i][j] = game->field.cell[i - 1][j];
     }
   }
-  for (int j = 0; j < COLS; j++) {
+  for (int j = 0; j < kCols; j++) {
     game->field.cell[0][j] = 0;
   }
 }
@@ -338,7 +337,7 @@ void handleAttachingState() {
   TetrisInfo_t *game = getTetrisInfo();
   int count_filled_lines = 0;
   // Check filled lines
-  for (int line = 0; line < ROWS; line++) {
+  for (int line = 0; line < kRows; line++) {
     if (isLineFill(line)) {
       count_filled_lines += 1;
       // Shift the top pixels to their place
@@ -390,11 +389,11 @@ void handleAttachingState() {
   game->curr_fig.rotation = 0;
 }
 
-bool checkNewPowition() {
+bool checkNewPosition() {
   TetrisInfo_t *game = getTetrisInfo();
   bool can_move = true;
-  for (int i = 0; i < FIG_ROWS && can_move; i++) {
-    for (int j = 0; j < FIG_COLS && can_move; j++) {
+  for (int i = 0; i < kFigRows && can_move; i++) {
+    for (int j = 0; j < kFigCols && can_move; j++) {
       if (game->curr_fig.cell[i][j]) {
         int new_x = game->curr_fig.coordinate.x + game->curr_fig.offset_x + j;
         int new_y = game->curr_fig.coordinate.y + game->curr_fig.offset_y + i;
@@ -409,8 +408,8 @@ bool checkNewPowition() {
 
 void addFigureOnField() {
   TetrisInfo_t *game = getTetrisInfo();
-  for (int i = 0; i < FIG_ROWS; i++) {
-    for (int j = 0; j < FIG_COLS; j++) {
+  for (int i = 0; i < kFigRows; i++) {
+    for (int j = 0; j < kFigCols; j++) {
       if (game->curr_fig.cell[i][j]) {
         int new_x = game->curr_fig.coordinate.x + game->curr_fig.offset_x + j;
         int new_y = game->curr_fig.coordinate.y + game->curr_fig.offset_y + i;
@@ -429,21 +428,17 @@ bool tryMoveFigure(UserAction_t action) {
   game->curr_fig.offset_x += (action == Right);
   game->curr_fig.offset_y = (action == Down);
 
-  // Erase current position
   eraseCurrentFigureOnField();
 
-  // Check new position with offset
-  bool can_move = checkNewPowition();
+  bool can_move = checkNewPosition();
 
   if (can_move) {
-    // Add figure to new position
     addFigureOnField();
     game->curr_fig.coordinate.x += game->curr_fig.offset_x;
     game->curr_fig.coordinate.y += game->curr_fig.offset_y;
     game->curr_fig.offset_x = 0;
     game->curr_fig.offset_y = 0;
   } else {
-    // Turn back last position
     game->curr_fig.offset_x = 0;
     game->curr_fig.offset_y = 0;
     addFigureOnField();
@@ -481,8 +476,8 @@ void rotateCurrentFigure() {
 void eraseCurrentFigureOnField() {
   TetrisInfo_t *game = getTetrisInfo();
 
-  for (int i = 0; i < FIG_ROWS; i++) {
-    for (int j = 0; j < FIG_COLS; j++) {
+  for (int i = 0; i < kFigRows; i++) {
+    for (int j = 0; j < kFigCols; j++) {
       if (game->curr_fig.cell[i][j]) {
         int fx = game->curr_fig.coordinate.x + j;
         int fy = game->curr_fig.coordinate.y + i;
@@ -514,20 +509,16 @@ void dropFigure() {
 }
 
 bool tryRotateFigure() {
-  // Нужно менять логику расположения на поле
   TetrisInfo_t *game = getTetrisInfo();
 
-  // Erase current position
   eraseCurrentFigureOnField();
 
   game->curr_fig.hash_all_rotation += 1;
   rotateCurrentFigure();
 
-  // Check new position
-  bool can_move = checkNewPowition();
+  bool can_move = checkNewPosition();
 
   if (can_move) {
-    // Add figure to new position
     addFigureOnField();
   } else {
     // Turn back last position
@@ -538,465 +529,203 @@ bool tryRotateFigure() {
   return can_move;
 }
 
+void clearCurrentFigure() {
+  TetrisInfo_t *game = getTetrisInfo();
+  game->curr_fig.cell[0][0] = 0;
+  game->curr_fig.cell[0][1] = 0;
+  game->curr_fig.cell[0][2] = 0;
+  game->curr_fig.cell[0][3] = 0;
+  game->curr_fig.cell[1][0] = 0;
+  game->curr_fig.cell[1][1] = 0;
+  game->curr_fig.cell[1][2] = 0;
+  game->curr_fig.cell[1][3] = 0;
+  game->curr_fig.cell[2][0] = 0;
+  game->curr_fig.cell[2][1] = 0;
+  game->curr_fig.cell[2][2] = 0;
+  game->curr_fig.cell[2][3] = 0;
+  game->curr_fig.cell[3][0] = 0;
+  game->curr_fig.cell[3][1] = 0;
+  game->curr_fig.cell[3][2] = 0;
+  game->curr_fig.cell[3][3] = 0;
+}
+
 void rotateFigureI() {
   TetrisInfo_t *game = getTetrisInfo();
+  clearCurrentFigure();
   switch (game->curr_fig.rotation) {
     case 1:
-      game->curr_fig.cell[0][0] = 0;  //  . .[] .
-      game->curr_fig.cell[0][1] = 0;  //  . .[] .
       game->curr_fig.cell[0][2] = 1;  //  . .[] .
-      game->curr_fig.cell[0][3] = 0;  //  . .[] .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 0;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 1;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 1;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][2] = 1;  //  . .[] .
+      game->curr_fig.cell[2][2] = 1;  //  . .[] .
+      game->curr_fig.cell[3][2] = 1;  //  . .[] .
       break;
     case 2:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  //  . . . .
-      game->curr_fig.cell[0][2] = 0;  // [][][][]
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 0;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 1;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 1;
-      game->curr_fig.cell[2][3] = 1;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[2][0] = 1;  //  . . . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
+      game->curr_fig.cell[2][2] = 1;  // [][][][]
+      game->curr_fig.cell[2][3] = 1;  //  . . . .
       break;
     case 3:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
       game->curr_fig.cell[0][1] = 1;  //  .[] . .
-      game->curr_fig.cell[0][2] = 0;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  .[] . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 1;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  .[] . .
+      game->curr_fig.cell[3][1] = 1;  //  .[] . .
       break;
     case 0:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  // [][][][]
-      game->curr_fig.cell[0][2] = 0;  //  . . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 1;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  //  . . . .
+      game->curr_fig.cell[1][1] = 1;  // [][][][]
+      game->curr_fig.cell[1][2] = 1;  //  . . . .
+      game->curr_fig.cell[1][3] = 1;  //  . . . .
       break;
   }
 }
 void rotateFigureJ() {
   TetrisInfo_t *game = getTetrisInfo();
+  clearCurrentFigure();
   switch (game->curr_fig.rotation) {
     case 1:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
       game->curr_fig.cell[0][1] = 1;  //  .[] . .
-      game->curr_fig.cell[0][2] = 0;  // [][] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 1;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][0] = 1;  // [][] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 2:
       game->curr_fig.cell[0][0] = 1;  // [] . . .
-      game->curr_fig.cell[0][1] = 0;  // [][][] .
-      game->curr_fig.cell[0][2] = 0;  //  . . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  // [][][] .
+      game->curr_fig.cell[1][1] = 1;  //  . . . .
+      game->curr_fig.cell[1][2] = 1;  //  . . . .
       break;
     case 3:
-      game->curr_fig.cell[0][0] = 0;  //  .[][] .
-      game->curr_fig.cell[0][1] = 1;  //  .[] . .
+      game->curr_fig.cell[0][1] = 1;  //  .[][] .
       game->curr_fig.cell[0][2] = 1;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 0:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  // [][][] .
-      game->curr_fig.cell[0][2] = 0;  //  . .[] .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 1;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  //  . . . .
+      game->curr_fig.cell[1][1] = 1;  // [][][] .
+      game->curr_fig.cell[1][2] = 1;  //  . .[] .
+      game->curr_fig.cell[2][2] = 1;  //  . . . .
       break;
   }
 }
 void rotateFigureT() {
   TetrisInfo_t *game = getTetrisInfo();
+  clearCurrentFigure();
   switch (game->curr_fig.rotation) {
     case 1:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
-      game->curr_fig.cell[0][1] = 1;  // [][] . .
-      game->curr_fig.cell[0][2] = 0;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][1] = 1;  //  .[] . .
+      game->curr_fig.cell[1][0] = 1;  // [][] . .
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 2:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
-      game->curr_fig.cell[0][1] = 1;  // [][][] .
-      game->curr_fig.cell[0][2] = 0;  //  . . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][1] = 1;  //  .[] . .
+      game->curr_fig.cell[1][0] = 1;  // [][][] .
+      game->curr_fig.cell[1][1] = 1;  //  . . . .
+      game->curr_fig.cell[1][2] = 1;  //  . . . .
       break;
     case 3:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
-      game->curr_fig.cell[0][1] = 1;  //  .[][] .
-      game->curr_fig.cell[0][2] = 0;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][1] = 1;  //  .[] . .
+      game->curr_fig.cell[1][1] = 1;  //  .[][] .
+      game->curr_fig.cell[1][2] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 0:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  // [][][] .
-      game->curr_fig.cell[0][2] = 0;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  //  . . . .
+      game->curr_fig.cell[1][1] = 1;  // [][][] .
+      game->curr_fig.cell[1][2] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
   }
 }
 void rotateFigureS() {
   TetrisInfo_t *game = getTetrisInfo();
+  clearCurrentFigure();
   switch (game->curr_fig.rotation) {
     case 1:
       game->curr_fig.cell[0][0] = 1;  // [] . . .
-      game->curr_fig.cell[0][1] = 0;  // [][] . .
-      game->curr_fig.cell[0][2] = 0;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  // [][] . .
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 2:
-      game->curr_fig.cell[0][0] = 0;  //  .[][] .
-      game->curr_fig.cell[0][1] = 1;  // [][] . .
-      game->curr_fig.cell[0][2] = 1;  //  . . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][1] = 1;  //  .[][] .
+      game->curr_fig.cell[0][2] = 1;  // [][] . .
+      game->curr_fig.cell[1][0] = 1;  //  . . . .
+      game->curr_fig.cell[1][1] = 1;  //  . . . .
       break;
     case 3:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
-      game->curr_fig.cell[0][1] = 1;  //  .[][] .
-      game->curr_fig.cell[0][2] = 0;  //  . .[] .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 1;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][1] = 1;  //  .[] . .
+      game->curr_fig.cell[1][1] = 1;  //  .[][] .
+      game->curr_fig.cell[1][2] = 1;  //  . .[] .
+      game->curr_fig.cell[2][2] = 1;  //  . . . .
       break;
     case 0:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  //  .[][] .
-      game->curr_fig.cell[0][2] = 0;  // [][] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 1;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  . . . .
+      game->curr_fig.cell[1][2] = 1;  //  .[][] .
+      game->curr_fig.cell[2][0] = 1;  // [][] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
   }
 }
 void rotateFigureZ() {
   TetrisInfo_t *game = getTetrisInfo();
+  clearCurrentFigure();
   switch (game->curr_fig.rotation) {
     case 1:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
-      game->curr_fig.cell[0][1] = 1;  // [][] . .
-      game->curr_fig.cell[0][2] = 0;  // [] . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 1;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][1] = 1;  //  .[] . .
+      game->curr_fig.cell[1][0] = 1;  // [][] . .
+      game->curr_fig.cell[1][1] = 1;  // [] . . .
+      game->curr_fig.cell[2][0] = 1;  //  . . . .
       break;
     case 2:
       game->curr_fig.cell[0][0] = 1;  // [][] . .
       game->curr_fig.cell[0][1] = 1;  //  .[][] .
-      game->curr_fig.cell[0][2] = 0;  //  . . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  . . . .
+      game->curr_fig.cell[1][2] = 1;  //  . . . .
       break;
     case 3:
-      game->curr_fig.cell[0][0] = 0;  //  . .[] .
-      game->curr_fig.cell[0][1] = 0;  //  .[][] .
-      game->curr_fig.cell[0][2] = 1;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][2] = 1;  //  . .[] .
+      game->curr_fig.cell[1][1] = 1;  //  .[][] .
+      game->curr_fig.cell[1][2] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 0:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  // [][] . .
-      game->curr_fig.cell[0][2] = 0;  //  .[][] .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 1;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  //  . . . .
+      game->curr_fig.cell[1][1] = 1;  // [][] . .
+      game->curr_fig.cell[2][1] = 1;  //  .[][] .
+      game->curr_fig.cell[2][2] = 1;  //  . . . .
       break;
   }
 }
 void rotateFigureL() {
   TetrisInfo_t *game = getTetrisInfo();
+  clearCurrentFigure();
   switch (game->curr_fig.rotation) {
     case 1:
       game->curr_fig.cell[0][0] = 1;  // [][] . .
       game->curr_fig.cell[0][1] = 1;  //  .[] . .
-      game->curr_fig.cell[0][2] = 0;  //  .[] . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  . . . .
       break;
     case 2:
-      game->curr_fig.cell[0][0] = 0;  //  . .[] .
-      game->curr_fig.cell[0][1] = 0;  // [][][] .
-      game->curr_fig.cell[0][2] = 1;  //  . . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[0][2] = 1;  //  . .[] .
+      game->curr_fig.cell[1][0] = 1;  // [][][] .
+      game->curr_fig.cell[1][1] = 1;  //  . . . .
+      game->curr_fig.cell[1][2] = 1;  //  . . . .
       break;
     case 3:
-      game->curr_fig.cell[0][0] = 0;  //  .[] . .
       game->curr_fig.cell[0][1] = 1;  //  .[] . .
-      game->curr_fig.cell[0][2] = 0;  //  .[][] .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 0;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 0;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 0;
-      game->curr_fig.cell[2][1] = 1;
-      game->curr_fig.cell[2][2] = 1;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][1] = 1;  //  .[] . .
+      game->curr_fig.cell[2][1] = 1;  //  .[][] .
+      game->curr_fig.cell[2][2] = 1;  //  . . . .
       break;
     case 0:
-      game->curr_fig.cell[0][0] = 0;  //  . . . .
-      game->curr_fig.cell[0][1] = 0;  // [][][] .
-      game->curr_fig.cell[0][2] = 0;  // [] . . .
-      game->curr_fig.cell[0][3] = 0;  //  . . . .
-      game->curr_fig.cell[1][0] = 1;
-      game->curr_fig.cell[1][1] = 1;
-      game->curr_fig.cell[1][2] = 1;
-      game->curr_fig.cell[1][3] = 0;
-      game->curr_fig.cell[2][0] = 1;
-      game->curr_fig.cell[2][1] = 0;
-      game->curr_fig.cell[2][2] = 0;
-      game->curr_fig.cell[2][3] = 0;
-      game->curr_fig.cell[3][0] = 0;
-      game->curr_fig.cell[3][1] = 0;
-      game->curr_fig.cell[3][2] = 0;
-      game->curr_fig.cell[3][3] = 0;
+      game->curr_fig.cell[1][0] = 1;  //  . . . .
+      game->curr_fig.cell[1][1] = 1;  // [][][] .
+      game->curr_fig.cell[1][2] = 1;  // [] . . .
+      game->curr_fig.cell[2][0] = 1;  //  . . . .
       break;
   }
 }

@@ -8,11 +8,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#define ROWS 20
-#define COLS 10
-#define FIG_ROWS 4
-#define FIG_COLS 4
-
 typedef enum {
   Start,
   Pause,
@@ -48,6 +43,13 @@ typedef enum {
 } TetrisState_t;
 
 typedef enum {
+  kFigCols = 4,
+  kFigRows = 4,
+  kCols = 10,
+  kRows = 20
+} Sizes_t;
+
+typedef enum {
   kFigureI,
   kFigureL,
   kFigureO,
@@ -64,21 +66,21 @@ typedef struct {
 
 typedef struct {
   struct {
-    int *row[ROWS];
-    int cell[ROWS][COLS];
+    int *row[kRows];
+    int cell[kRows][kCols];
   } field;
 
   struct {
     Tetromino_t type;
-    int *row[FIG_ROWS];
-    int cell[FIG_ROWS][FIG_COLS];
+    int *row[kFigRows];
+    int cell[kFigRows][kFigCols];
   } next;
 
   struct {
     Tetromino_t type;
     Point_t coordinate;
-    int *row[FIG_ROWS];
-    int cell[FIG_ROWS][FIG_COLS];
+    int *row[kFigRows];
+    int cell[kFigRows][kFigCols];
     int offset_x;
     int offset_y;
     int rotation;
@@ -101,7 +103,7 @@ GameInfo_t *getGameInfo();
 TetrisInfo_t *initTetrisInfo();
 TetrisInfo_t *getTetrisInfo();
 void clearTetrisInfo();
-void clearArray(int **array, int rows, int cols);
+void clearArray(int **array, int kRows, int kCols);
 
 void userInput(UserAction_t action, bool hold);
 GameInfo_t updateCurrentState();
@@ -111,8 +113,8 @@ bool timeToShift();
 void saveHighScore();
 bool coordinateInField(const int x, const int y);
 bool figureCannotMove(const int x, const int y, const int field_cell);
-void copyTetromino(int dst_fig[FIG_ROWS][FIG_COLS],
-                   int src_fig[FIG_ROWS][FIG_COLS]);
+void copyTetromino(int dst_fig[kFigRows][kFigCols],
+                   int src_fig[kFigRows][kFigCols]);
 void onStartState(UserAction_t action);
 void onPauseState(UserAction_t action);
 void onGameOverState(UserAction_t action);
@@ -125,7 +127,7 @@ bool checkGameOver();
 bool isLineFill(int line);
 void moveGroundDown(int line);
 bool tryMoveFigure(UserAction_t action);
-bool checkNewPowition();
+bool checkNewPosition();
 void addFigureOnField();
 void rotateCurrentFigure();
 void eraseCurrentFigureOnField();
@@ -137,5 +139,6 @@ void rotateFigureT();
 void rotateFigureS();
 void rotateFigureZ();
 void rotateFigureL();
+void clearCurrentFigure();
 
 #endif  // BRICK_GAME_TETRIS_H_
