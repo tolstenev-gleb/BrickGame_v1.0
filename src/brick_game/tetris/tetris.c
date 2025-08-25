@@ -239,7 +239,6 @@ void handleSpawnState() {
       {{0, 0, 0, 0}, {0, 1, 1, 0}, {1, 1, 0, 0}, {0, 0, 0, 0}},   // kFigureS
       {{0, 0, 0, 0}, {1, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}},   // kFigureZ
       {{0, 0, 0, 0}, {1, 1, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 0}}};  // kFigureJ
-
   // Generate next tetromino if empty (start of game)
   static bool next_empty = true;
   Tetromino_t type = rand() % 7;
@@ -251,11 +250,9 @@ void handleSpawnState() {
   }
   copyTetromino(game->curr_fig.cell, game->next.cell);
   game->curr_fig.type = game->next.type;
-
   // Set starting coordinate (top center)
   game->curr_fig.coordinate.x = 3;
   game->curr_fig.coordinate.y = (game->curr_fig.type == kFigureI ? -2 : -3);
-
   // Generate new next tetromino
   copyTetromino(game->next.cell, tetrominoes[type]);
   game->next.type = type;
@@ -304,7 +301,6 @@ bool checkGameOver() {
   bool game_over = false;
   // If figure was attched in row 0
   if (getLowestCoordinate() <= 0) {
-    // Game over
     game_over = true;
   }
   return game_over;
@@ -336,15 +332,12 @@ void moveGroundDown(int line) {
 void handleAttachingState() {
   TetrisInfo_t *game = getTetrisInfo();
   int count_filled_lines = 0;
-  // Check filled lines
   for (int line = 0; line < kRows; line++) {
     if (isLineFill(line)) {
       count_filled_lines += 1;
-      // Shift the top pixels to their place
       moveGroundDown(line);
     }
   }
-
   // Earn points              // bonus part 2
   switch (count_filled_lines) {
     case 1:
@@ -363,7 +356,6 @@ void handleAttachingState() {
   if (game->score > game->high_score) {
     game->high_score = game->score;
   }
-
 #ifndef NO_LIMITS
   // Set new level necessary  // bonus part 3
   if (count_filled_lines > 0 && game->level < 10) {
@@ -376,7 +368,6 @@ void handleAttachingState() {
     game->update_interval = 1000 - game->speed * 75;
   }
 #endif  // NO_LIMITS
-
 #ifdef NO_LIMITS
   if (count_filled_lines > 0) {
     game->level = game->score / 600;
@@ -384,7 +375,6 @@ void handleAttachingState() {
     game->update_interval = 1000 - game->speed * 75;
   }
 #endif  // NO_LIMITS
-
   game->curr_fig.hash_all_rotation = 0;
   game->curr_fig.rotation = 0;
 }
@@ -475,7 +465,6 @@ void rotateCurrentFigure() {
 
 void eraseCurrentFigureOnField() {
   TetrisInfo_t *game = getTetrisInfo();
-
   for (int i = 0; i < kFigRows; i++) {
     for (int j = 0; j < kFigCols; j++) {
       if (game->curr_fig.cell[i][j]) {
