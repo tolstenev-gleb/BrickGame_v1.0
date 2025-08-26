@@ -8,37 +8,13 @@
 #include <time.h>
 #include <unistd.h>
 
-typedef enum {
-  Start,
-  Pause,
-  Terminate,
-  Left,
-  Right,
-  Up,
-  Down,
-  Action
-} UserAction_t;
-
-typedef struct {
-  int **field;
-  int **next;
-  int score;
-  int high_score;
-  int level;
-  int speed;
-  int pause;
-} GameInfo_t;
+#include "../brick_game.h"
 
 /** States of FSM */
 typedef enum {
   kStart,
   kPause,
-  kTerminate,
-  kSpawn,
   kMoving,
-  kRotating,
-  kShifting,
-  kAttaching,
   kGameOver
 } TetrisState_t;
 
@@ -105,9 +81,6 @@ TetrisInfo_t *getTetrisInfo();
 void clearTetrisInfo();
 void clearArray(int **array, int kRows, int kCols);
 
-void userInput(UserAction_t action, bool hold);
-GameInfo_t updateCurrentState();
-
 unsigned long currentTimeMs();
 bool timeToShift();
 void saveHighScore();
@@ -119,8 +92,8 @@ void onStartState(UserAction_t action);
 void onPauseState(UserAction_t action);
 void onGameOverState(UserAction_t action);
 void onMovingState(UserAction_t action);
-void handleSpawnState();
-void handleAttachingState();
+void generateNextFigure();
+void handleAttaching();
 void handleTerminateState();
 int getLowestCoordinate();
 bool checkGameOver();

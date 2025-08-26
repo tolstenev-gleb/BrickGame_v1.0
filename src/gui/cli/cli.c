@@ -9,23 +9,22 @@ void initNcurses() {
   timeout(100);
 }
 
-void gameCycle() {
-  UserAction_t action = Up;
+void gameLoop() {
+  UserAction_t action;
   GameInfo_t info;
-  bool run_game = true;
-  struct timespec ts = {.tv_sec = 0, .tv_nsec = 100000};  // 100 microsec
+  bool run_game;
   do {
-    action = getSignal();
-    userInput(action, false);
+    if (getAction(&action)) {
+      userInput(action, false);
+    }
     info = updateCurrentState();
     run_game = showState(info);
-    nanosleep(&ts, NULL);
   } while (run_game);
 }
 
 bool showState(GameInfo_t info) {
   bool run_game = true;
-  if (info.field == NULL && info.next == NULL) {
+  if (info.field == NULL || info.next == NULL) {
     run_game = false;
   } else {
     int left_line = 0;
@@ -76,7 +75,7 @@ bool showState(GameInfo_t info) {
 #ifdef HELP
     left_line++;
     mvprintw(left_line++, left_side, "%s", "'Enter' | start game");
-    mvprintw(left_line++, left_side, "%s", " 'Esc'  | pause / unpause");
+    mvprintw(left_line++, left_side, "%s", "  'f'   | pause / unpause");
     mvprintw(left_line++, left_side, "%s", "  'q'   | exit");
     mvprintw(left_line++, left_side, "%s", "'space' | action");
     mvprintw(left_line++, left_side, "%s",
@@ -121,34 +120,37 @@ void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
 #endif  // DEBUG
 
 // BrickGame function
-UserAction_t getSignal() {
+bool getAction(UserAction_t *ptr_action) {
   int signal = getch();
-  UserAction_t action = Up;
-  switch (signal) {
-    case ENTER_KEY:  // Start game
-      action = Start;
-      break;
-    case KEY_LEFT:  // Move figure to left
-      action = Left;
-      break;
-    case KEY_RIGHT:  // Move figure to right
-      action = Right;
-      break;
-    case KEY_UP:
-      action = Up;  // No effect
-      break;
-    case KEY_SPACE:
-      action = Action;  // Rotate the figure
-      break;
-    case KEY_DOWN:  // The falling of figure
-      action = Down;
-      break;
-    case KEY_ESCAPE:  // Pause the game
-      action = Pause;
-      break;
-    case KEY_Q_LOWER:  // Quit from the BrickGame
-      action = Terminate;
-      break;
+  bool is_key_pressed = false;
+  if (signal != ERR) {
+    is_key_pressed = true;
+    switch (signal) {
+      case ENTER_KEY:
+        *ptr_action = Start;
+        break;
+      case KEY_LEFT:
+        *ptr_action = Left;
+        break;
+      case KEY_RIGHT:
+        *ptr_action = Right;
+        break;
+      case KEY_UP:
+        *ptr_action = Up;
+        break;
+      case KEY_SPACE:
+        *ptr_action = Action;
+        break;
+      case KEY_DOWN:
+        *ptr_action = Down;
+        break;
+      case KEY_F_LOWER:
+        *ptr_action = Pause;
+        break;
+      case KEY_Q_LOWER:
+        *ptr_action = Terminate;
+        break;
+    }
   }
-  return action;
+  return is_key_pressed;
 }

@@ -2,21 +2,26 @@
 #define BRICK_GAME_GUI_CLI_H_
 
 #include <ncurses.h>
-#include <time.h>
 
-// #include "../../brick_game/test_tetris/test_tetris.h"
-#include "../../brick_game/tetris/tetris.h"
-// #include "../../brick_game/tetris_liliamo/tetris.h"
+// for debugging
+// #include "../../brick_game/tetris/tetris.h"
 
-#define KEY_ESCAPE 27
 #define ENTER_KEY 10
 #define KEY_SPACE 32
+#define KEY_F_LOWER 102
 #define KEY_Q_LOWER 113
+// #define KEY_W_LOWER 119
+#define KEY_A_LOWER 97
+// #define KEY_S_LOWER 115
+#define KEY_D_LOWER 100
+
+// for general case
+#include "../../brick_game/brick_game.h"
 
 void initNcurses();
-void gameCycle();
+void gameLoop();
 bool showState(GameInfo_t info);
-UserAction_t getSignal();
+bool getAction();
 
 #ifdef DEBUG
 void debugWhichState(TetrisState_t *ptr_state, char *buffer);

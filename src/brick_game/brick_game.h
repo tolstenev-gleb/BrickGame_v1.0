@@ -1,8 +1,5 @@
-#ifndef BRICK_GAME_TEST_TETRIS_H_
-#define BRICK_GAME_TEST_TETRIS_H_
-
-#include <stdbool.h>  // for bool
-#include <string.h>   // for NULL
+#ifndef BRICK_GAME_H_
+#define BRICK_GAME_H_
 
 typedef enum {
   Start,
@@ -28,4 +25,4 @@ typedef struct {
 void userInput(UserAction_t action, bool hold);
 GameInfo_t updateCurrentState();
 
-#endif  // BRICK_GAME_TEST_TETRIS_H_
+#endif  // BRICK_GAME_H_

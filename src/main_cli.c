@@ -2,7 +2,7 @@
 
 int main() {
   initNcurses();
-  gameCycle();
+  gameLoop();
   endwin();
   return 0;
 }

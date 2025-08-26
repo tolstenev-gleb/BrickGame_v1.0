@@ -78,9 +78,9 @@ void clearTetrisInfo() {
   clearArray(game->field.row, kRows, kCols);
 }
 
-void clearArray(int **array, int kRows, int kCols) {
-  for (int i = 0; i < kRows; i++) {
-    for (int j = 0; j < kCols; j++) {
+void clearArray(int **array, int rows, int cols) {
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
       array[i][j] = 0;
     }
   }
@@ -98,10 +98,10 @@ void onMovingState(UserAction_t action) {
       dropFigure();
       break;
     case Action:
-      setState(kRotating);
+      tryRotateFigure();
       break;
     case Terminate:
-      setState(kTerminate);
+      handleTerminateState();
       break;
     case Pause:
       setState(kPause);
@@ -120,15 +120,6 @@ void userInput(UserAction_t action, bool hold) {
     case kPause:
       onPauseState(action);
       break;
-      // Нет break в kShifting.
-      // Во время kShifting может поступить сигнал на перемещение.
-      // Чтобы его не игнорировать, сразу переходим к обработке kMoving
-    case kShifting:
-      if (tryMoveFigure(Down)) {
-        setState(kMoving);
-      } else {
-        setState(kAttaching);
-      }
     case kMoving:
       onMovingState(action);
       break;
@@ -142,41 +133,16 @@ void userInput(UserAction_t action, bool hold) {
 
 GameInfo_t updateCurrentState() {
   TetrisState_t state = *getState();
-  switch (state) {
-    case kSpawn:
-      handleSpawnState();
-      setState(kShifting);
-      break;
-    case kMoving:
-      if (timeToShift()) {
-        setState(kShifting);
-      }
-      break;
-    case kAttaching:
-      if (tryMoveFigure(Down)) {
-        setState(kMoving);
+  if (state == kMoving && timeToShift()) {
+    if (!tryMoveFigure(Down)) {
+      handleAttaching();
+      if (checkGameOver()) {
+        saveHighScore();
+        setState(kGameOver);
       } else {
-        handleAttachingState();
-        if (checkGameOver()) {
-          setState(kGameOver);
-        } else {
-          setState(kSpawn);
-        }
+        generateNextFigure();
       }
-      break;
-    case kRotating:
-      tryRotateFigure();
-      if (timeToShift()) {
-        setState(kShifting);
-      } else {
-        setState(kMoving);
-      }
-      break;
-    case kTerminate:
-      handleTerminateState();
-      break;
-    default:
-      break;
+    }
   }
   return *getGameInfo();
 }
@@ -229,7 +195,7 @@ void copyTetromino(int dst_fig[kFigRows][kFigCols],
   }
 }
 
-void handleSpawnState() {
+void generateNextFigure() {
   TetrisInfo_t *game = getTetrisInfo();
   static int tetrominoes[7][kFigRows][kFigCols] = {
       {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureI
@@ -261,10 +227,11 @@ void handleSpawnState() {
 void onStartState(UserAction_t action) {
   switch (action) {
     case Start:
-      setState(kSpawn);
+      generateNextFigure();
+      setState(kMoving);
       break;
     case Terminate:
-      setState(kTerminate);
+      handleTerminateState();
       break;
     default:
       break;
@@ -277,7 +244,7 @@ void onPauseState(UserAction_t action) {
       setState(kMoving);
       break;
     case Terminate:
-      setState(kTerminate);
+      handleTerminateState();
       break;
     default:
       break;
@@ -329,7 +296,7 @@ void moveGroundDown(int line) {
   }
 }
 
-void handleAttachingState() {
+void handleAttaching() {
   TetrisInfo_t *game = getTetrisInfo();
   int count_filled_lines = 0;
   for (int line = 0; line < kRows; line++) {
@@ -482,10 +449,11 @@ void onGameOverState(UserAction_t action) {
   switch (action) {
     case Start:
       clearTetrisInfo();
-      setState(kSpawn);
+      generateNextFigure();
+      setState(kMoving);
       break;
     case Terminate:
-      setState(kTerminate);
+      handleTerminateState();
       break;
     default:
       break;
