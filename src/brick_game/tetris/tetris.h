@@ -68,6 +68,7 @@ typedef struct {
   int speed;
   int score;
   int high_score;
+  int pause;
   unsigned long last_tick;        // time
   unsigned long update_interval;  // time
 } TetrisInfo_t;

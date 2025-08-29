@@ -1,6 +1,8 @@
 #ifndef BRICK_GAME_H_
 #define BRICK_GAME_H_
 
+#include <stdbool.h>
+
 typedef enum {
   Start,
   Pause,

@@ -59,6 +59,7 @@ GameInfo_t *getGameInfo() {
     game_info.score = game->score;
     game_info.high_score = game->high_score;
     game_info.level = game->level;
+    game_info.pause = game->pause;
   } else {
     // Установка NULL спользуется для передачи на интерфейс информации о том,
     // что пользователь хочет выйти из программы BrickGame
@@ -79,6 +80,7 @@ void clearTetrisInfo() {
 }
 
 void clearArray(int **array, int rows, int cols) {
+  // maybe memset 0 ?
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
       array[i][j] = 0;
@@ -87,6 +89,7 @@ void clearArray(int **array, int rows, int cols) {
 }
 
 void onMovingState(UserAction_t action) {
+  TetrisInfo_t *game = getTetrisInfo();
   switch (action) {
     case Left:
       tryMoveFigure(action);
@@ -105,6 +108,7 @@ void onMovingState(UserAction_t action) {
       break;
     case Pause:
       setState(kPause);
+      game->pause = 1;
       break;
     default:
       break;
@@ -239,9 +243,11 @@ void onStartState(UserAction_t action) {
 }
 
 void onPauseState(UserAction_t action) {
+  TetrisInfo_t *game = getTetrisInfo();
   switch (action) {
     case Pause:
       setState(kMoving);
+      game->pause = 0;
       break;
     case Terminate:
       handleTerminateState();
