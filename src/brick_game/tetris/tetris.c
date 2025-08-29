@@ -199,21 +199,8 @@ void copyTetromino(int dst_fig[kFigRows][kFigCols],
   }
 }
 
-// void setFigure(int dst_fig[kFigRows][kFigCols], Tetromino_t type) {
-//   static int tetrominoes[7][kFigRows][kFigCols] = {
-//       {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureI
-//       {{0, 0, 0, 0}, {1, 1, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureL
-//       {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureO
-//       {{0, 0, 0, 0}, {1, 1, 1, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}},   // kFigureT
-//       {{0, 0, 0, 0}, {0, 1, 1, 0}, {1, 1, 0, 0}, {0, 0, 0, 0}},   // kFigureS
-//       {{0, 0, 0, 0}, {1, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}},   // kFigureZ
-//       {{0, 0, 0, 0}, {1, 1, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 0}}};  // kFigureJ
-//   copyTetromino(dst_fig, tetrominoes[type]);
-//   game->next.type = type;
-// }
-
-void generateNextFigure() {
-    static int tetrominoes[7][kFigRows][kFigCols] = {
+void setFigure(Figure_t *ptr_fig, Tetromino_t type) {
+  static int tetrominoes[7][kFigRows][kFigCols] = {
       {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureI
       {{0, 0, 0, 0}, {1, 1, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureL
       {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureO
@@ -221,25 +208,24 @@ void generateNextFigure() {
       {{0, 0, 0, 0}, {0, 1, 1, 0}, {1, 1, 0, 0}, {0, 0, 0, 0}},   // kFigureS
       {{0, 0, 0, 0}, {1, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}},   // kFigureZ
       {{0, 0, 0, 0}, {1, 1, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 0}}};  // kFigureJ
+  copyTetromino(ptr_fig->cell, tetrominoes[type]);
+  ptr_fig->type = type;
+}
 
+void generateNextFigure() {
   TetrisInfo_t *game = getTetrisInfo();
+  Tetromino_t type = rand() % 7;
   // Generate next tetromino if empty (start of game)
   static bool next_empty = true;
-  Tetromino_t type = rand() % 7;
   if (next_empty) {
-  copyTetromino(game->next.fig.cell, tetrominoes[type]);
-  game->next.fig.type = type;
+    setFigure(&game->next.fig, type);
     type = rand() % 7;
     next_empty = false;
   }
-  copyTetromino(game->current.fig.cell, game->next.fig.cell);
-  game->current.fig.type = game->next.fig.type;
-  // Set starting coordinate (top center)
+  setFigure(&game->current.fig, game->next.fig.type);
   game->current.coordinate.x = 3;
   game->current.coordinate.y = (game->current.fig.type == kFigureI ? -2 : -3);
-  // Generate new next tetromino
-  copyTetromino(game->next.fig.cell, tetrominoes[type]);
-  game->next.fig.type = type;
+  setFigure(&game->next.fig, type);
 }
 
 void onStartState(UserAction_t action) {

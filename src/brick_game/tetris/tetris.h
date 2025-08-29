@@ -116,5 +116,6 @@ void rotateFigureS();
 void rotateFigureZ();
 void rotateFigureL();
 void clearCurrentFigure();
+void setFigure(Figure_t *ptr_fig, Tetromino_t type);
 
 #endif  // BRICK_GAME_TETRIS_H_

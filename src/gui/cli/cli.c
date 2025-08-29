@@ -40,9 +40,9 @@ bool showState(GameInfo_t info) {
     mvprintw(left_line, left_side, "State: %s", "                            ");
     mvprintw(left_line++, left_side, "State: %s", buffer);
     mvprintw(left_line++, left_side, "coordinate.y: %d ",
-             ptr_info->curr_fig.coordinate.y);
+             ptr_info->current.coordinate.y);
     mvprintw(left_line++, left_side, "coordinate.x: %d ",
-             ptr_info->curr_fig.coordinate.x);
+             ptr_info->current.coordinate.x);
     int field_line = 0;
 #endif  // DEBUG
     mvprintw(right_line++, right_side, "Score: %d          ", info.score);
@@ -94,23 +94,8 @@ void debugWhichState(TetrisState_t *ptr_state, char *buffer) {
     case kPause:
       strcpy(buffer, "kPause");
       break;
-    case kTerminate:
-      strcpy(buffer, "kTerminate");
-      break;
-    case kSpawn:
-      strcpy(buffer, "kSpawn");
-      break;
     case kMoving:
       strcpy(buffer, "kMoving");
-      break;
-    case kRotating:
-      strcpy(buffer, "kRotating");
-      break;
-    case kShifting:
-      strcpy(buffer, "kShifting");
-      break;
-    case kAttaching:
-      strcpy(buffer, "kAttaching");
       break;
     case kGameOver:
       strcpy(buffer, "kGameOver");
