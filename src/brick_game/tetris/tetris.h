@@ -41,27 +41,29 @@ typedef struct {
 } Point_t;
 
 typedef struct {
+  Tetromino_t type;
+  int *row[kFigRows];
+  int cell[kFigRows][kFigCols];
+} Figure_t;
+
+typedef struct {
   struct {
     int *row[kRows];
     int cell[kRows][kCols];
   } field;
 
   struct {
-    Tetromino_t type;
-    int *row[kFigRows];
-    int cell[kFigRows][kFigCols];
+    Figure_t fig;
   } next;
 
   struct {
-    Tetromino_t type;
+    Figure_t fig;
     Point_t coordinate;
-    int *row[kFigRows];
-    int cell[kFigRows][kFigCols];
     int offset_x;
     int offset_y;
     int rotation;
     int hash_all_rotation;
-  } curr_fig;
+  } current;
 
   bool run_game;
   int level;
