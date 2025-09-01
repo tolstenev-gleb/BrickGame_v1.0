@@ -99,9 +99,143 @@ END_TEST
 
 // FSM    -> kMoving
 // action -> Right
+START_TEST(onMovingStateGetRight) {
+  // Arrange
+  // . . . . . . . . . .
+  // . . . .[][] . . . .
+  // . . . .[][] . . . .
+  // . . . . . . . . . .
+  //        ...
+  setState(kMoving);
+  TetrisInfo_t *game = getTetrisInfo();
+  userInput(Start, false);
+  setFigure(&game->current.fig, kFigureO);
+  game->current.coordinate.x = 3;
+  game->current.coordinate.y = 0;
+  tryMoveFigure(Down);
+  GameInfo_t game_info = *getGameInfo();
+
+#ifdef PRINT_TEST
+  printArray(game_info.field, kRows, kCols);
+#endif
+
+  // Act
+  userInput(Right, false);
+  game_info = updateCurrentState();
+  // Assert
+  // . . . . . . . . . .
+  // . . . . .[][] . . .
+  // . . . . .[][] . . .
+  // . . . . . . . . . .
+  //        ...
+
+#ifdef PRINT_TEST
+  printArray(game_info.field, kRows, kCols);
+#endif
+
+  ck_assert_int_eq(game_info.field[1][4], 0);  // old pos
+  ck_assert_int_eq(game_info.field[1][5], 1);  // the same
+  ck_assert_int_eq(game_info.field[1][6], 1);  // new pos
+
+  ck_assert_int_eq(game_info.field[2][4], 0);  // old pos
+  ck_assert_int_eq(game_info.field[2][5], 1);  // the same
+  ck_assert_int_eq(game_info.field[2][6], 1);  // new pos
+}
+END_TEST
 
 // FSM    -> kMoving
-// action -> Action
+// action -> Down
+START_TEST(onMovingStateGetDown) {
+  // Arrange
+  // . . . . . . . . . .
+  // . . . .[][] . . . .
+  // . . . .[][] . . . .
+  // . . . . . . . . . .
+  //        ...
+  setState(kMoving);
+  TetrisInfo_t *game = getTetrisInfo();
+  userInput(Start, false);
+  setFigure(&game->current.fig, kFigureO);
+  game->current.coordinate.x = 3;
+  game->current.coordinate.y = 0;
+  tryMoveFigure(Down);
+  GameInfo_t game_info = *getGameInfo();
+
+#ifdef PRINT_TEST
+  printArray(game_info.field, kRows, kCols);
+#endif
+
+  // Act
+  userInput(Down, false);
+  game_info = updateCurrentState();
+  // Assert
+  //        ...
+  // . . . . . . . . . .
+  // . . . .[][] . . . .
+  // . . . .[][] . . . .
+
+#ifdef PRINT_TEST
+  printArray(game_info.field, kRows, kCols);
+#endif
+
+  ck_assert_int_eq(game_info.field[1][4], 0);  // old pos
+  ck_assert_int_eq(game_info.field[1][5], 0);  // old pos
+  ck_assert_int_eq(game_info.field[2][4], 0);  // old pos
+  ck_assert_int_eq(game_info.field[2][5], 0);  // old pos
+
+  ck_assert_int_eq(game_info.field[18][4], 1);  // new pos
+  ck_assert_int_eq(game_info.field[18][5], 1);  // new pos
+  ck_assert_int_eq(game_info.field[19][4], 1);  // new pos
+  ck_assert_int_eq(game_info.field[19][5], 1);  // new pos
+}
+END_TEST
+
+// FSM      -> kMoving
+// action   -> Action
+// figure   -> kFigureT
+// rotation -> 1
+START_TEST(onMovingStateGetActionFigureTRotation1) {
+  // Arrange
+  // . . . . . . . . . .
+  // . . . .[][][] . . .
+  // . . . . .[] . . . .
+  // . . . . . . . . . .
+  //        ...
+  setState(kMoving);
+  TetrisInfo_t *game = getTetrisInfo();
+  userInput(Start, false);
+  setFigure(&game->current.fig, kFigureT);
+  game->current.coordinate.x = 4;
+  game->current.coordinate.y = -1;
+  tryMoveFigure(Down);
+  GameInfo_t game_info = *getGameInfo();
+
+#ifdef PRINT_TEST
+  printArray(game_info.field, kRows, kCols);
+#endif
+
+  // Act
+  userInput(Action, false);
+  game_info = updateCurrentState();
+  // Assert
+  // . . . . .[] . . . .
+  // . . . .[][] . . . .
+  // . . . . .[] . . . .
+  // . . . . . . . . . .
+  //        ...
+
+#ifdef PRINT_TEST
+  printArray(game_info.field, kRows, kCols);
+#endif
+
+  ck_assert_int_eq(game_info.field[0][5], 1);  // new pos
+  ck_assert_int_eq(game_info.field[1][4], 1);  // the same
+  ck_assert_int_eq(game_info.field[1][5], 1);  // the same
+  ck_assert_int_eq(game_info.field[1][6], 0);  // old pos
+  ck_assert_int_eq(game_info.field[2][5], 1);  // the same
+
+}
+END_TEST
 
 // FSM    -> kMoving
 // action -> Pause
@@ -121,7 +255,8 @@ START_TEST(onGameOverStateGetStart) {
   // Arrange
   setState(kGameOver);
   TetrisInfo_t *game = getTetrisInfo();
-  GameInfo_t game_info = {0};
+  GameInfo_t game_info = {0}; // положить что-нибудь?
+
   // Act
   userInput(Start, false);
   game_info = updateCurrentState();
@@ -162,6 +297,9 @@ Suite *create_suite_tetris(void) {
 
   // Moving state tests
   tcase_add_test(tc_core, onMovingStateGetLeft);
+  tcase_add_test(tc_core, onMovingStateGetRight);
+  tcase_add_test(tc_core, onMovingStateGetDown);
+  tcase_add_test(tc_core, onMovingStateGetActionFigureTRotation1);
 
   // Pause state tests
 

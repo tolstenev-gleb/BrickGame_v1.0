@@ -1,7 +1,7 @@
 CC 			:= gcc
 CFLAGS 		:= -std=c11 -pedantic -pthread
 GUI_FLAGS 	:= -lncurses
-MACROS		:= -DHELP # -DDEBUG # -DNO_LIMITS
+MACROS		:= # -DHELP # -DDEBUG # -DNO_LIMITS
 
 SRC_MAIN	:= main_cli.c
 OBJ_MAIN	:= main_cli.o
@@ -51,6 +51,10 @@ $(LIB_TETRIS): $(OBJ_TETRIS)
 
 test: $(SRC_TETRIS) $(SRC_TEST)
 	$(CC) $^ $(CHECK_FLAGS) -o $(TEST) 
+	./$(TEST)
+
+test_print: $(SRC_TETRIS) $(SRC_TEST)
+	$(CC) -DPRINT_TEST $^ $(CHECK_FLAGS) -o $(TEST) 
 	./$(TEST)
 
 gcov_report: $(SRC_TEST) $(SRC_TETRIS) 

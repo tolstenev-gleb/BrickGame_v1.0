@@ -201,6 +201,7 @@ void copyTetromino(int dst_fig[kFigRows][kFigCols],
 
 void setFigure(Figure_t *ptr_fig, Tetromino_t type) {
   static int tetrominoes[7][kFigRows][kFigCols] = {
+      // change start rotation to fit in 2 rows. change rotation functions ???
       {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureI
       {{0, 0, 0, 0}, {1, 1, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureL
       {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},   // kFigureO
@@ -223,8 +224,14 @@ void generateNextFigure() {
     next_empty = false;
   }
   setFigure(&game->current.fig, game->next.fig.type);
-  game->current.coordinate.x = 3;
-  game->current.coordinate.y = (game->current.fig.type == kFigureI ? -2 : -3);
+  game->current.coordinate.x =
+      (game->current.fig.type == kFigureI || game->current.fig.type == kFigureO
+           ? 3
+           : 4);
+  game->current.coordinate.y =
+      (game->current.fig.type == kFigureI || game->current.fig.type == kFigureO
+           ? -2
+           : -3);
   setFigure(&game->next.fig, type);
 }
 

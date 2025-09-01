@@ -27,6 +27,13 @@ bool showState(GameInfo_t info) {
   if (info.field == NULL || info.next == NULL) {
     run_game = false;
   } else {
+    // int max_x, max_y;
+    // getmaxyx(stdscr, max_y, max_x);  // fix resize
+    // int left_line = max_y / 2 - 10;
+    // int right_line = max_y / 2 - 10;
+    // int left_side = max_x / 2 - 16;  // coordinate for field and help text
+    // int right_side = left_side + 23;
+    
     int left_line = 0;
     int right_line = 0;
     int left_side = 0;  // coordinate for field and help text
